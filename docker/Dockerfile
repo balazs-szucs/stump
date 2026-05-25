@@ -13,21 +13,21 @@ RUN set -ex; \
     mkdir -p pdfium; \
     if [ $(arch) = "x86_64" ]; then \
         # NOTE: This was previously -x86, need to test more on amd64-compatible systems to ensure I have the right one
-        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7843/pdfium-linux-x64.tgz; \
+        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7763/pdfium-linux-x64.tgz; \
     elif [ $(arch) = "aarch64" ]; then \
-        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7843/pdfium-linux-arm64.tgz; \
+        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7763/pdfium-linux-arm64.tgz; \
     fi; \
     tar -xzvf pdfium.tgz -C ./pdfium; \
     rm pdfium.tgz
 
 # We need to validate the sha of the libpdfium.so file:
-# amd64 -> d0083d2129eb21c1cb6bca1312cac2f7d77b5d03
-# arm64 -> 77e1fd997e9a6c30e1cb2f7eaa6bf1d5a6a2c453
+# amd64 -> 727145701ce5bb0344c389071b7aa8f1e15ae81a
+# arm64 -> c23942df3dc35f95a7bfa75fc52a480e77b5b0ca
 RUN set -ex; \
     if [ $(arch) = "x86_64" ]; then \
-        echo "d0083d2129eb21c1cb6bca1312cac2f7d77b5d03 /pdfium/lib/libpdfium.so" | sha1sum -c -; \
+        echo "727145701ce5bb0344c389071b7aa8f1e15ae81a /pdfium/lib/libpdfium.so" | sha1sum -c -; \
     elif [ $(arch) = "aarch64" ]; then \
-        echo "77e1fd997e9a6c30e1cb2f7eaa6bf1d5a6a2c453 /pdfium/lib/libpdfium.so" | sha1sum -c -; \
+        echo "c23942df3dc35f95a7bfa75fc52a480e77b5b0ca /pdfium/lib/libpdfium.so" | sha1sum -c -; \
     else \
         echo "Unsupported architecture"; \
         exit 1; \

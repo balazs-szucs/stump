@@ -21,9 +21,9 @@ nightly_sed_correction() {
 download_pdfium() {
     local arch=$1
     if [ "$arch" = "amd64" ]; then
-        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7843/pdfium-linux-x64.tgz
+        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7763/pdfium-linux-x64.tgz
     elif [ "$arch" = "arm64" ]; then
-        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7843/pdfium-linux-arm64.tgz
+        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7763/pdfium-linux-arm64.tgz
     fi
     tar -xzvf pdfium.tgz -C /pdfium
     rm pdfium.tgz
