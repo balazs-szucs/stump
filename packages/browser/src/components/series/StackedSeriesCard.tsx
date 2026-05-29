@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@/context'
 import { useFancyAnimations } from '@/hooks/useFancyAnimations'
 import { usePaths } from '@/paths'
-import { usePrefetchSeries } from '@/scenes/series'
+import { usePrefetchSeries } from '@/scenes/series/SeriesLayout'
 import { usePrefetchSeriesBooks } from '@/scenes/series/tabs/books/SeriesBooksScene'
 
 import pluralizeStat from '../../utils/pluralize'

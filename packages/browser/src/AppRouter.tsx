@@ -1,24 +1,25 @@
 import { LocaleProvider } from '@stump/i18n'
 import { type AllowedLocale } from '@stump/i18n'
-import { lazy } from 'react'
+import { Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
+
+import RouteLoadingIndicator from '@/components/RouteLoadingIndicator'
 
 import { AppLayout } from './AppLayout.tsx'
 import { RouterProvider } from './context/RouterContext.tsx'
-import { BookRouter } from './scenes/book'
-import { BookClubRouter } from './scenes/bookClub'
-import { LibraryRouter } from './scenes/library'
-import { SeriesRouter } from './scenes/series'
-import { SettingsRouter } from './scenes/settings'
-import { SmartListRouter } from './scenes/smartList'
+import {
+	BookClubRouter,
+	BookRouter,
+	FourOhFour,
+	HomeScene,
+	LibraryRouter,
+	LoginOrClaimScene,
+	SeriesRouter,
+	ServerConnectionErrorScene,
+	SettingsRouter,
+	SmartListRouter,
+} from './lazyRoutes'
 import { useAppStore, useUserStore } from './stores'
-
-const HomeScene = lazy(() => import('./scenes/home'))
-const FourOhFour = lazy(() => import('./scenes/error/FourOhFour.tsx'))
-const ServerConnectionErrorScene = lazy(
-	() => import('./scenes/error/ServerConnectionErrorScene.tsx'),
-)
-const LoginOrClaimScene = lazy(() => import('./scenes/auth'))
 
 type AppRouterProps = {
 	basePath?: string
@@ -36,21 +37,23 @@ export function AppRouter({ basePath }: AppRouterProps = {}) {
 	return (
 		<LocaleProvider locale={resolvedLocale}>
 			<RouterProvider basePath={basePath}>
-				<Routes>
-					<Route path="/" element={<AppLayout />}>
-						<Route path="" element={<HomeScene />} />
-						<Route path="libraries/*" element={<LibraryRouter />} />
-						<Route path="series/*" element={<SeriesRouter />} />
-						<Route path="books/*" element={<BookRouter />} />
-						<Route path="clubs/*" element={<BookClubRouter />} />
-						<Route path="/smart-lists/*" element={<SmartListRouter />} />
-						<Route path="settings/*" element={<SettingsRouter />} />
-					</Route>
+				<Suspense fallback={<RouteLoadingIndicator />}>
+					<Routes>
+						<Route path="/" element={<AppLayout />}>
+							<Route path="" element={<HomeScene />} />
+							<Route path="libraries/*" element={<LibraryRouter />} />
+							<Route path="series/*" element={<SeriesRouter />} />
+							<Route path="books/*" element={<BookRouter />} />
+							<Route path="clubs/*" element={<BookClubRouter />} />
+							<Route path="/smart-lists/*" element={<SmartListRouter />} />
+							<Route path="settings/*" element={<SettingsRouter />} />
+						</Route>
 
-					<Route path="/auth" element={<LoginOrClaimScene />} />
-					<Route path="/server-connection-error" element={<ServerConnectionErrorScene />} />
-					<Route path="*" element={<FourOhFour />} />
-				</Routes>
+						<Route path="/auth" element={<LoginOrClaimScene />} />
+						<Route path="/server-connection-error" element={<ServerConnectionErrorScene />} />
+						<Route path="*" element={<FourOhFour />} />
+					</Routes>
+				</Suspense>
 			</RouterProvider>
 		</LocaleProvider>
 	)
