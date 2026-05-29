@@ -1,0 +1,52 @@
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    working_dir: /workspace
+    command: cargo run --package stump_server --bin stump_server
+    environment:
+      STUMP_CLIENT_DIR: /workspace/apps/web/dist
+      STUMP_CONFIG_DIR: /workspace/.docker-config
+      STUMP_PORT: 10801
+      STUMP_IN_DOCKER: "true"
+      STUMP_PROFILE: debug
+      PDFIUM_PATH: /opt/pdfium/lib/libpdfium.so
+      CARGO_TERM_COLOR: always
+    ports:
+      - "10801:10801"
+    volumes:
+      - ../:/workspace
+      - stump_node_modules:/workspace/node_modules
+      - stump_target:/workspace/target
+      - stump_cargo_registry:/usr/local/cargo/registry
+      - stump_cargo_git:/usr/local/cargo/git
+      - stump_rustup:/usr/local/rustup
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    depends_on:
+      - server
+    working_dir: /workspace
+    command: yarn workspace @stump/web dev --host 0.0.0.0 --port 3002
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../:/workspace
+      - stump_node_modules:/workspace/node_modules
+      - stump_target:/workspace/target
+      - stump_cargo_registry:/usr/local/cargo/registry
+      - stump_cargo_git:/usr/local/cargo/git
+      - stump_rustup:/usr/local/rustup
+
+volumes:
+  stump_node_modules:
+  stump_target:
+  stump_cargo_registry:
+  stump_cargo_git:
+  stump_rustup:

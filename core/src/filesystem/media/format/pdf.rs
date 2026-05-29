@@ -230,11 +230,15 @@ impl PdfProcessor {
 			)));
 		}
 
-		// Convert back to u16 for pdfium API
-		let page_index_u16 = page_index_usize as u16;
+		// Convert to Pdfium page index type.
+		let page_index = i32::try_from(page_index_usize).map_err(|_| {
+			FileError::PdfProcessingError(format!(
+				"Page index {page_index_usize} exceeds supported range",
+			))
+		})?;
 
 		tracing::debug!(path, page, total_pages, "Loading PDF page");
-		let document_page = document.pages().get(page_index_u16)?;
+		let document_page = document.pages().get(page_index)?;
 
 		// Configure rendering with quality settings
 		let use_high_quality = force_high_quality || config.pdf_high_quality;
@@ -260,34 +264,21 @@ impl PdfProcessor {
 		};
 
 		let bitmap = document_page.render_with_config(&render_config)?;
-		let dyn_image = bitmap.as_image();
+		let dyn_image = bitmap.as_image()?;
 
 		// Get the configured output format
 		let output_format = config.get_pdf_render_format();
 		let image_format = into_image_format(output_format);
 		let content_type = ContentType::from(output_format);
 
-		if let Some(image) = dyn_image.as_rgba8() {
-			let mut buffer = Cursor::new(vec![]);
-			image
-				.write_to(&mut buffer, image_format)
-				.map_err(|e| {
-					tracing::error!(error = ?e, format = ?image_format, "Failed to write image to buffer");
-					FileError::PdfProcessingError(String::from(
-						"An image could not be rendered from the PDF page",
-					))
-				})?;
-			Ok((content_type, buffer.into_inner()))
-		} else {
-			tracing::warn!(
-				path,
-				page,
-				"An image could not be rendered from the PDF page"
-			);
-			Err(FileError::PdfProcessingError(String::from(
+		let mut buffer = Cursor::new(vec![]);
+		dyn_image.write_to(&mut buffer, image_format).map_err(|e| {
+			tracing::error!(error = ?e, format = ?image_format, "Failed to write image to buffer");
+			FileError::PdfProcessingError(String::from(
 				"An image could not be rendered from the PDF page",
-			)))
-		}
+			))
+		})?;
+		Ok((content_type, buffer.into_inner()))
 	}
 
 	/// Async version of get_page with caching support
@@ -712,27 +703,22 @@ impl FileConverter for PdfProcessor {
 			.enumerate()
 			.map(|(idx, page)| {
 				let bitmap = page.render_with_config(&render_config)?;
-				let dyn_image = bitmap.as_image();
+				let dyn_image = bitmap.as_image()?;
 
-				if let Some(image) = dyn_image.as_rgba8() {
-					let mut buffer = Cursor::new(vec![]);
-					image.write_to(&mut buffer, output_format).map_err(|e| {
-						tracing::error!(error = ?e, "Failed to write image to buffer");
+				let mut buffer = Cursor::new(vec![]);
+				dyn_image
+					.write_to(&mut buffer, output_format)
+					.map_err(|e| {
+						tracing::error!(
+							error = ?e,
+							page = idx + 1,
+							"Failed to write image to buffer"
+						);
 						FileError::PdfProcessingError(String::from(
 							"An image could not be rendered from the PDF page",
 						))
 					})?;
-					Ok(buffer.into_inner())
-				} else {
-					tracing::warn!(
-						path,
-						page = idx + 1,
-						"An image could not be rendered from the PDF page"
-					);
-					Err(FileError::PdfProcessingError(String::from(
-						"An image could not be rendered from the PDF page",
-					)))
-				}
+				Ok::<Vec<u8>, FileError>(buffer.into_inner())
 			})
 			.filter_map(Result::ok)
 			.collect::<Vec<Vec<u8>>>();

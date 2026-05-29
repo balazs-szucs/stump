@@ -1,0 +1,99 @@
+# ------------------------------------------------------------------------------
+# PDFium Stage
+# ------------------------------------------------------------------------------
+
+FROM debian:bookworm-slim AS pdfium
+ARG TARGETARCH
+
+# Update and install curl and tar
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y curl tar
+
+# Download and extract the PDFium binaries
+RUN set -ex; \
+    mkdir -p pdfium; \
+    if [ "$TARGETARCH" = "amd64" ] || [ -z "$TARGETARCH" ] && [ "$(arch)" = "x86_64" ]; then \
+        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7763/pdfium-linux-x64.tgz; \
+    elif [ "$TARGETARCH" = "arm64" ] || [ -z "$TARGETARCH" ] && [ "$(arch)" = "aarch64" ]; then \
+        curl -sLo pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7763/pdfium-linux-arm64.tgz; \
+    else \
+        echo "Unsupported architecture: $TARGETARCH"; \
+        exit 1; \
+    fi; \
+    tar -xzf pdfium.tgz -C ./pdfium; \
+    rm pdfium.tgz
+
+# We need to validate the sha of the libpdfium.so file:
+# amd64 -> 727145701ce5bb0344c389071b7aa8f1e15ae81a
+# arm64 -> c23942df3dc35f95a7bfa75fc52a480e77b5b0ca
+RUN set -ex; \
+    if [ "$TARGETARCH" = "amd64" ] || [ -z "$TARGETARCH" ] && [ "$(arch)" = "x86_64" ]; then \
+        echo "727145701ce5bb0344c389071b7aa8f1e15ae81a /pdfium/lib/libpdfium.so" | sha1sum -c -; \
+    elif [ "$TARGETARCH" = "arm64" ] || [ -z "$TARGETARCH" ] && [ "$(arch)" = "aarch64" ]; then \
+        echo "c23942df3dc35f95a7bfa75fc52a480e77b5b0ca /pdfium/lib/libpdfium.so" | sha1sum -c -; \
+    else \
+        echo "Unsupported architecture: $TARGETARCH"; \
+        exit 1; \
+    fi
+
+# ------------------------------------------------------------------------------
+# Dev Base Image
+# ------------------------------------------------------------------------------
+
+FROM node:22.14.0-bookworm-slim AS dev
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:${PATH}
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
+        bash \
+        build-essential \
+        ca-certificates \
+        cmake \
+        curl \
+        git \
+        libsqlite3-dev \
+        libssl-dev \
+        pkg-config \
+        libglib2.0-0 \
+        fontconfig \
+        libfreetype6 \
+        libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --profile minimal --default-toolchain 1.92.0
+
+WORKDIR /workspace
+
+# Install JS deps up front for better caching
+COPY package.json yarn.lock lerna.json tsconfig.json tsconfig.eslint.json tsconfig.options.json ./
+COPY prettier.config.js eslint.config.mjs bacon.toml ./
+
+# Copy package.json files from apps and packages
+COPY apps/desktop/package.json ./apps/desktop/
+COPY apps/web/package.json ./apps/web/
+
+COPY packages/browser/package.json ./packages/browser/
+COPY packages/client/package.json ./packages/client/
+COPY packages/components/package.json ./packages/components/
+COPY packages/graphql/package.json ./packages/graphql/
+COPY packages/i18n/package.json ./packages/i18n/
+COPY packages/sdk/package.json ./packages/sdk/
+
+RUN yarn install --frozen-lockfile
+
+COPY --from=pdfium /pdfium /opt/pdfium
+COPY --chmod=755 docker/dev-entrypoint.sh /usr/local/bin/stump-dev-entrypoint
+
+# Default Stump environment variables
+ENV PDFIUM_PATH=/opt/pdfium/lib/libpdfium.so
+ENV STUMP_IN_DOCKER=true
+ENV STUMP_PROFILE=debug
+ENV STUMP_PORT=10801
+
+ENTRYPOINT ["/usr/local/bin/stump-dev-entrypoint"]
+CMD ["bash"]

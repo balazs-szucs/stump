@@ -38,6 +38,7 @@ target/
 *.tsbuildinfo
 .env
 docker-compose.yaml
+.docker-config/
 
 core/integration-tests/.*
 core/integration-tests/*libraries*
