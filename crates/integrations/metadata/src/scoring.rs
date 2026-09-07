@@ -64,6 +64,15 @@ fn tokens_match(a: &str, b: &str) -> bool {
 	a == b || strsim::jaro_winkler(a, b) > 0.90
 }
 
+/// ISBNs are frequently written with hyphens or spaces, so comparisons must
+/// normalize to the bare digits (and trailing X) before matching
+fn normalize_isbn(raw: &str) -> String {
+	raw.chars()
+		.filter(|c| c.is_ascii_alphanumeric())
+		.collect::<String>()
+		.to_uppercase()
+}
+
 /// Compute a token-overlap score between a query and candidate title
 ///
 /// Returns a value in `0.0..=1.0` representing how well the titles overlap
@@ -243,11 +252,15 @@ impl MatchScorer {
 	}
 
 	fn check_isbn_match(query_isbn: &str, metadata: &ExternalMetadata) -> bool {
+		let query = normalize_isbn(query_isbn);
+		if query.is_empty() {
+			return false;
+		}
 		match metadata {
-			ExternalMetadata::Media(m) => {
-				m.isbn.as_deref() == Some(query_isbn)
-					|| m.isbn_13.as_deref() == Some(query_isbn)
-			},
+			ExternalMetadata::Media(m) => [m.isbn.as_deref(), m.isbn_13.as_deref()]
+				.into_iter()
+				.flatten()
+				.any(|candidate| normalize_isbn(candidate) == query),
 			ExternalMetadata::Series(_) => false,
 		}
 	}
@@ -347,6 +360,24 @@ mod tests {
 		assert!(
 			(c.confidence - 1.0).abs() < f32::EPSILON,
 			"ISBN + author should reach 1.0, got {}",
+			c.confidence
+		);
+	}
+
+	#[test]
+	fn hyphenated_isbn_matches_normalized_candidate() {
+		let scorer = MatchScorer;
+		let query = SearchQuery {
+			title: "Dune".into(),
+			isbn: Some("978-0-441-17271-9".into()),
+			..Default::default()
+		};
+		let mut c = make_media_candidate("Dune", Some("9780441172719"), vec![]);
+		scorer.score_candidate(&query, &mut c);
+
+		assert!(
+			c.confidence >= MatchScorer::ISBN_FLOOR,
+			"hyphenated ISBN should still match, got {}",
 			c.confidence
 		);
 	}
