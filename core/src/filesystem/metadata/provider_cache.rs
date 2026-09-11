@@ -37,13 +37,16 @@ impl ProviderClientCache {
 			}
 		}
 
-		let encrypted_token = config
-			.encrypted_api_token
-			.as_ref()
-			.ok_or(ProviderCacheError::MissingApiToken)?;
-
-		let decrypted_token = decrypt_string(encrypted_token, &self.encryption_key)
-			.map_err(|e| ProviderCacheError::DecryptionFailed(e.to_string()))?;
+		let encrypted_token = config.encrypted_api_token.as_ref();
+		let decrypted_token = match encrypted_token {
+			Some(token) => decrypt_string(token, &self.encryption_key)
+				.map_err(|e| ProviderCacheError::DecryptionFailed(e.to_string()))?,
+			// OpenLibrary needs no token so a missing value is valid
+			None if config.provider_type == MetadataProviderEnum::OpenLibrary => {
+				String::new()
+			},
+			None => return Err(ProviderCacheError::MissingApiToken),
+		};
 
 		let provider_type_str = config.provider_type.to_string();
 		let client = create_provider(&provider_type_str, decrypted_token)
