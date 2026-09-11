@@ -1,7 +1,9 @@
+use chrono::Datelike;
+
 use super::{
 	client::{normalize_isbn, OpenLibraryClient},
 	mapper,
-	model::{Edition, SearchDoc},
+	model::{Edition, SearchDoc, Work},
 };
 use crate::{
 	error::MetadataProviderError,
@@ -14,6 +16,7 @@ use crate::{
 };
 
 const DEFAULT_MAX_RESULTS: u32 = 10;
+const MAX_AUTHORS: usize = 5;
 
 pub struct OpenLibraryProvider {
 	client: OpenLibraryClient,
@@ -62,6 +65,11 @@ pub fn is_empty_query(query: &SearchQuery) -> bool {
 			.is_none_or(|i| normalize_isbn(i).is_empty())
 }
 
+fn work_external_id(doc: &SearchDoc) -> Option<String> {
+	let key = doc.key.trim();
+	(!key.is_empty()).then(|| key.to_string())
+}
+
 fn clean_author_names(names: &[String]) -> Option<Vec<String>> {
 	let cleaned: Vec<String> = names
 		.iter()
@@ -72,6 +80,50 @@ fn clean_author_names(names: &[String]) -> Option<Vec<String>> {
 	(!cleaned.is_empty()).then_some(cleaned)
 }
 
+fn join_title_subtitle(title: String, subtitle: Option<String>) -> String {
+	match subtitle {
+		Some(subtitle)
+			if !subtitle.is_empty()
+				&& !title.to_lowercase().contains(&subtitle.to_lowercase()) =>
+		{
+			format!("{title}: {subtitle}")
+		},
+		_ => title,
+	}
+}
+
+fn parse_year(value: Option<&str>) -> Option<i32> {
+	let text = value.map(str::trim).filter(|s| !s.is_empty())?;
+	if let Ok(date) = dateparser::parse(text) {
+		return Some(date.year());
+	}
+	// Avoid slicing by byte index, which can split a multi-byte character
+	let digits: String = text
+		.chars()
+		.take_while(|c| c.is_ascii_digit())
+		.take(4)
+		.collect();
+	if digits.len() == 4 {
+		digits.parse().ok()
+	} else {
+		None
+	}
+}
+
+fn parse_date_parts(value: Option<&str>) -> (Option<i32>, Option<i32>, Option<i32>) {
+	let Some(text) = value.map(str::trim).filter(|s| !s.is_empty()) else {
+		return (None, None, None);
+	};
+	match dateparser::parse(text) {
+		Ok(date) => (
+			Some(date.year()),
+			Some(date.month() as i32),
+			Some(date.day() as i32),
+		),
+		Err(_) => (parse_year(Some(text)), None, None),
+	}
+}
+
 fn empty_outcome() -> SearchOutcome {
 	SearchOutcome {
 		candidates: vec![],
@@ -80,27 +132,129 @@ fn empty_outcome() -> SearchOutcome {
 }
 
 impl OpenLibraryProvider {
-	fn media_from_doc(&self, doc: &SearchDoc) -> MatchCandidate {
-		let edition = Edition::default();
-		let metadata = ExternalMediaMetadata {
-			provider: self.id().to_string(),
-			external_id: doc.key.clone(),
-			title: Some(doc.title.clone()),
-			year: doc.first_publish_year,
-			isbn: mapper::extract_isbn10(&edition, Some(doc)),
-			isbn_13: mapper::extract_isbn13(&edition, Some(doc)),
-			writers: clean_author_names(&doc.author_name),
-			cover_url: mapper::cover_url_from_id(doc.cover_i),
-			provider_url: Some(format!("https://openlibrary.org{}", doc.key)),
-			..Default::default()
-		};
-		MatchCandidate {
-			external_id: metadata.external_id.clone(),
-			metadata: ExternalMetadata::Media(metadata),
-			provider: self.id().to_string(),
-			confidence: 0.0,
-			confidence_factors: Vec::new(),
+	/// Resolve author names, preferring names already present on the search doc
+	/// so a search result does not fan out into one request per author
+	async fn resolve_authors(
+		&self,
+		edition_keys: &[String],
+		work_keys: &[String],
+		doc: Option<&SearchDoc>,
+	) -> Option<Vec<String>> {
+		if let Some(names) = doc.and_then(|d| clean_author_names(&d.author_name)) {
+			return Some(names);
 		}
+		let keys = if edition_keys.is_empty() {
+			work_keys
+		} else {
+			edition_keys
+		};
+		self.author_names_for_keys(keys).await
+	}
+
+	async fn author_names_for_keys(&self, keys: &[String]) -> Option<Vec<String>> {
+		let mut names = Vec::new();
+		for key in keys.iter().take(MAX_AUTHORS) {
+			match self.client.author(key).await {
+				Ok(author) => {
+					if let Some(name) = author.display_name() {
+						names.push(name.to_string());
+					}
+				},
+				Err(e) => {
+					tracing::debug!(
+						key,
+						error = ?e,
+						"Failed to fetch OpenLibrary author"
+					);
+				},
+			}
+		}
+		(!names.is_empty()).then_some(names)
+	}
+
+	async fn media_from_edition(
+		&self,
+		edition: Edition,
+		doc: Option<&SearchDoc>,
+	) -> Result<ExternalMediaMetadata, MetadataProviderError> {
+		let work = match edition.works.first() {
+			Some(work_ref) => self.client.work(&work_ref.key).await.ok(),
+			None => None,
+		};
+		let fallback_work = Work::default();
+		let work_ref = work.as_ref().unwrap_or(&fallback_work);
+		let edition_author_keys: Vec<String> =
+			edition.authors.iter().map(|a| a.key.clone()).collect();
+		let work_author_keys: Vec<String> = work_ref
+			.authors
+			.iter()
+			.map(|a| a.author.key.clone())
+			.collect();
+		let authors = self
+			.resolve_authors(&edition_author_keys, &work_author_keys, doc)
+			.await;
+		let (year, month, day) = parse_date_parts(edition.publish_date.as_deref());
+		let year = year.or_else(|| parse_year(work_ref.first_publish_date.as_deref()));
+		let series_name = mapper::extract_series_info(&edition);
+		let cover = mapper::cover_url_for_edition(&edition, work_ref, doc);
+		// External media has no subtitle slot so a present subtitle joins the title
+		let title = mapper::extract_title(work_ref, Some(&edition), doc).map(|title| {
+			join_title_subtitle(title, mapper::extract_subtitle(work_ref, Some(&edition)))
+		});
+
+		Ok(ExternalMediaMetadata {
+			provider: self.id().to_string(),
+			external_id: edition.id(),
+			title,
+			summary: mapper::extract_description(work_ref, Some(&edition)),
+			page_count: edition.number_of_pages,
+			series_name,
+			// TODO(openlibrary): OpenLibrary editions only carry series names,
+			// so series cannot be linked by ID yet
+			series_external_id: None,
+			number: None,
+			year,
+			month,
+			day,
+			isbn: mapper::extract_isbn10(&edition, doc),
+			isbn_13: mapper::extract_isbn13(&edition, doc),
+			// TODO(openlibrary): capture author OLIDs once provider metadata
+			// models authors as entities
+			writers: authors,
+			cover_url: cover,
+			provider_url: Some(format!("https://openlibrary.org/books/{}", edition.id())),
+			..Default::default()
+		})
+	}
+
+	async fn media_from_work(
+		&self,
+		work_id: &str,
+		doc: Option<&SearchDoc>,
+	) -> Result<ExternalMediaMetadata, MetadataProviderError> {
+		let work = self.client.work(work_id).await?;
+		let keys: Vec<String> =
+			work.authors.iter().map(|a| a.author.key.clone()).collect();
+		let authors = self.resolve_authors(&[], &keys, doc).await;
+		let cover = mapper::cover_url_for_edition(&Edition::default(), &work, doc);
+		let year = parse_year(work.first_publish_date.as_deref())
+			.or(doc.and_then(|d| d.first_publish_year));
+		// External media has no subtitle slot so a present subtitle joins the title
+		let title = mapper::extract_title(&work, None, doc).map(|title| {
+			join_title_subtitle(title, mapper::extract_subtitle(&work, None))
+		});
+
+		Ok(ExternalMediaMetadata {
+			provider: self.id().to_string(),
+			external_id: work.id(),
+			title,
+			summary: mapper::extract_description(&work, None),
+			year,
+			writers: authors,
+			cover_url: cover,
+			provider_url: Some(format!("https://openlibrary.org/works/{}", work.id())),
+			..Default::default()
+		})
 	}
 }
 
@@ -135,13 +289,38 @@ impl MetadataProvider for OpenLibraryProvider {
 		}
 		let response = self.client.search(query, self.limit(query)).await?;
 		let requested = response.docs.len();
-		let candidates = response
-			.docs
-			.iter()
-			.take(self.limit(query) as usize)
-			.filter(|doc| !doc.key.trim().is_empty())
-			.map(|doc| self.media_from_doc(doc))
-			.collect();
+		let mut candidates = Vec::with_capacity(requested);
+		for doc in response.docs.iter().take(self.limit(query) as usize) {
+			let Some(work_id) = work_external_id(doc) else {
+				continue;
+			};
+			let edition = self
+				.client
+				.work_editions(&work_id, 1)
+				.await
+				.ok()
+				.and_then(|entries| entries.into_iter().next());
+			let metadata = match edition {
+				Some(edition) => self.media_from_edition(edition, Some(doc)).await,
+				None => self.media_from_work(&work_id, Some(doc)).await,
+			};
+			match metadata {
+				Ok(metadata) => candidates.push(MatchCandidate {
+					external_id: metadata.external_id.clone(),
+					metadata: ExternalMetadata::Media(metadata),
+					provider: self.id().to_string(),
+					confidence: 0.0,
+					confidence_factors: Vec::new(),
+				}),
+				Err(e) => {
+					tracing::warn!(
+						key = doc.key.as_str(),
+						error = ?e,
+						"Failed to fetch edition for OpenLibrary media result"
+					);
+				},
+			}
+		}
 		Ok(SearchOutcome {
 			candidates: self.score_search(query, candidates),
 			requested,
@@ -158,10 +337,17 @@ impl MetadataProvider for OpenLibraryProvider {
 
 	async fn fetch_media_metadata(
 		&self,
-		_external_id: &str,
+		external_id: &str,
 	) -> Result<ExternalMediaMetadata, MetadataProviderError> {
-		// TODO(openlibrary): hydrate media from editions and works
-		Err(MetadataProviderError::OperationNotSupported)
+		// Candidates may point at either an edition or a work, so fall back to
+		// the work endpoint when the edition lookup 404s
+		match self.client.edition(external_id).await {
+			Ok(edition) => self.media_from_edition(edition, None).await,
+			Err(MetadataProviderError::NotFound(_)) => {
+				self.media_from_work(external_id, None).await
+			},
+			Err(e) => Err(e),
+		}
 	}
 
 	async fn verify_credentials(
