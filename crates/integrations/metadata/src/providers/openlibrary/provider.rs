@@ -172,6 +172,32 @@ impl OpenLibraryProvider {
 		(!names.is_empty()).then_some(names)
 	}
 
+	async fn series_from_work(
+		&self,
+		work_id: &str,
+		doc: Option<&SearchDoc>,
+	) -> Result<ExternalSeriesMetadata, MetadataProviderError> {
+		let work = self.client.work(work_id).await?;
+		let keys: Vec<String> =
+			work.authors.iter().map(|a| a.author.key.clone()).collect();
+		let authors = self.resolve_authors(&[], &keys, doc).await;
+		let cover = mapper::cover_url_for_edition(&Edition::default(), &work, doc);
+		let year = parse_year(work.first_publish_date.as_deref())
+			.or(doc.and_then(|d| d.first_publish_year));
+
+		Ok(ExternalSeriesMetadata {
+			provider: self.id().to_string(),
+			external_id: work.id(),
+			title: work.title.clone(),
+			alternative_titles: vec![],
+			summary: mapper::extract_description(&work, None),
+			authors,
+			year,
+			cover_url: cover,
+			..Default::default()
+		})
+	}
+
 	async fn media_from_edition(
 		&self,
 		edition: Edition,
@@ -274,10 +300,40 @@ impl MetadataProvider for OpenLibraryProvider {
 
 	async fn search_series(
 		&self,
-		_query: &SearchQuery,
+		query: &SearchQuery,
 	) -> Result<SearchOutcome, MetadataProviderError> {
-		// TODO(openlibrary): resolve series through works once hydration exists
-		Ok(empty_outcome())
+		if is_empty_query(query) {
+			return Ok(empty_outcome());
+		}
+
+		let response = self.client.search(query, self.limit(query)).await?;
+		let requested = response.docs.len();
+		let mut candidates = Vec::with_capacity(requested);
+		for doc in response.docs.iter().take(self.limit(query) as usize) {
+			let Some(work_id) = work_external_id(doc) else {
+				continue;
+			};
+			match self.series_from_work(&work_id, Some(doc)).await {
+				Ok(metadata) => candidates.push(MatchCandidate {
+					external_id: metadata.external_id.clone(),
+					metadata: ExternalMetadata::Series(metadata),
+					provider: self.id().to_string(),
+					confidence: 0.0,
+					confidence_factors: Vec::new(),
+				}),
+				Err(e) => {
+					tracing::warn!(
+						work_id,
+						error = ?e,
+						"Failed to fetch work for OpenLibrary series result"
+					);
+				},
+			}
+		}
+		Ok(SearchOutcome {
+			candidates: self.score_search(query, candidates),
+			requested,
+		})
 	}
 
 	async fn search_media(
@@ -329,10 +385,9 @@ impl MetadataProvider for OpenLibraryProvider {
 
 	async fn fetch_series_metadata(
 		&self,
-		_external_id: &str,
+		external_id: &str,
 	) -> Result<ExternalSeriesMetadata, MetadataProviderError> {
-		// TODO(openlibrary): hydrate series from works
-		Err(MetadataProviderError::OperationNotSupported)
+		self.series_from_work(external_id, None).await
 	}
 
 	async fn fetch_media_metadata(
