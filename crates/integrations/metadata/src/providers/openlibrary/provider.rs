@@ -65,6 +65,13 @@ pub fn is_empty_query(query: &SearchQuery) -> bool {
 			.is_none_or(|i| normalize_isbn(i).is_empty())
 }
 
+fn isbn_param(query: &SearchQuery) -> Option<&str> {
+	query
+		.isbn
+		.as_deref()
+		.filter(|i| !normalize_isbn(i).is_empty())
+}
+
 fn work_external_id(doc: &SearchDoc) -> Option<String> {
 	let key = doc.key.trim();
 	(!key.is_empty()).then(|| key.to_string())
@@ -282,6 +289,32 @@ impl OpenLibraryProvider {
 			..Default::default()
 		})
 	}
+
+	async fn isbn_media_candidate(
+		&self,
+		isbn: &str,
+	) -> Result<MatchCandidate, MetadataProviderError> {
+		let edition = self.client.edition_by_isbn(isbn).await?;
+		let metadata = self.media_from_edition(edition, None).await?;
+		Ok(MatchCandidate {
+			external_id: metadata.external_id.clone(),
+			metadata: ExternalMetadata::Media(metadata),
+			provider: self.id().to_string(),
+			confidence: 0.0,
+			confidence_factors: Vec::new(),
+		})
+	}
+
+	fn scored_outcome(
+		&self,
+		query: &SearchQuery,
+		candidate: MatchCandidate,
+	) -> SearchOutcome {
+		SearchOutcome {
+			candidates: self.score_search(query, vec![candidate]),
+			requested: 1,
+		}
+	}
 }
 
 #[async_trait::async_trait]
@@ -304,6 +337,37 @@ impl MetadataProvider for OpenLibraryProvider {
 	) -> Result<SearchOutcome, MetadataProviderError> {
 		if is_empty_query(query) {
 			return Ok(empty_outcome());
+		}
+		if let Some(isbn) = isbn_param(query) {
+			match self.client.edition_by_isbn(isbn).await {
+				Ok(edition) => {
+					let work_key = edition
+						.works
+						.first()
+						.map(|w| w.key.clone())
+						.unwrap_or_default();
+					if !work_key.is_empty() {
+						let metadata = self.series_from_work(&work_key, None).await?;
+						let candidate = MatchCandidate {
+							external_id: metadata.external_id.clone(),
+							metadata: ExternalMetadata::Series(metadata),
+							provider: self.id().to_string(),
+							confidence: 0.0,
+							confidence_factors: Vec::new(),
+						};
+						return Ok(self.scored_outcome(query, candidate));
+					}
+					if !has_text_query(query) {
+						return Ok(empty_outcome());
+					}
+				},
+				Err(MetadataProviderError::NotFound(_)) => {
+					if !has_text_query(query) {
+						return Ok(empty_outcome());
+					}
+				},
+				Err(e) => return Err(e),
+			}
 		}
 
 		let response = self.client.search(query, self.limit(query)).await?;
@@ -343,6 +407,20 @@ impl MetadataProvider for OpenLibraryProvider {
 		if is_empty_query(query) {
 			return Ok(empty_outcome());
 		}
+		if let Some(isbn) = isbn_param(query) {
+			match self.isbn_media_candidate(isbn).await {
+				Ok(candidate) => {
+					return Ok(self.scored_outcome(query, candidate));
+				},
+				Err(MetadataProviderError::NotFound(_)) => {
+					if !has_text_query(query) {
+						return Ok(empty_outcome());
+					}
+				},
+				Err(e) => return Err(e),
+			}
+		}
+
 		let response = self.client.search(query, self.limit(query)).await?;
 		let requested = response.docs.len();
 		let mut candidates = Vec::with_capacity(requested);
