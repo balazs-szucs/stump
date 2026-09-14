@@ -98,7 +98,7 @@ pub fn extract_series_info(edition: &Edition) -> Option<String> {
 		.map(str::to_string)
 }
 
-pub fn cover_url_from_id(cover_id: Option<i64>) -> Option<String> {
+fn cover_url_from_id(cover_id: Option<i64>) -> Option<String> {
 	cover_id
 		.filter(|id| *id > 0)
 		.map(|id| format!("https://covers.openlibrary.org/b/id/{id}-L.jpg"))

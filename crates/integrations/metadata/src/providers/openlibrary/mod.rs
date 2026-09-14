@@ -1,7 +1,7 @@
-pub mod client;
+mod client;
 pub mod mapper;
 pub mod model;
-pub mod provider;
+mod provider;
 
 pub use client::{normalize_isbn, OpenLibraryClient};
-pub use provider::{is_empty_query, OpenLibraryProvider};
+pub use provider::OpenLibraryProvider;

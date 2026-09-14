@@ -57,7 +57,7 @@ fn has_text_query(query: &SearchQuery) -> bool {
 			.is_some_and(|a| !a.trim().is_empty())
 }
 
-pub fn is_empty_query(query: &SearchQuery) -> bool {
+fn is_empty_query(query: &SearchQuery) -> bool {
 	!has_text_query(query)
 		&& query
 			.isbn
