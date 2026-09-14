@@ -1,0 +1,10 @@
+{
+	"authors": [{ "author": { "key": "/authors/OL34184A" }, "type": { "key": "/type/author_role" } }],
+	"covers": [6498519],
+	"description": { "type": "/type/text", "value": "Clever fox steals food from farmers." },
+	"first_publish_date": "1970",
+	"key": "/works/OL45804W",
+	"subjects": ["Animals", "Foxes"],
+	"title": "Fantastic Mr Fox",
+	"type": { "key": "/type/work" }
+}
