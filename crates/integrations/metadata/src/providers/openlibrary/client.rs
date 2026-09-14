@@ -15,16 +15,16 @@ use crate::{
 };
 
 const BASE_URL: &str = "https://openlibrary.org";
-const DEFAULT_CONTACT_EMAIL: &str = "openlibrary@stumpapp.dev";
+// TODO: add actual dedicated email?
+const DEFAULT_CONTACT_EMAIL: &str = "[EMAIL_ADDRESS]";
+// TODO(openlibrary): the search field schema is not guaranteed stable
 const SEARCH_FIELDS: &str = "key,title,author_name,first_publish_year,isbn,cover_i";
-// OpenLibrary allows 3 requests per second for identified requests (a
-// User-Agent with a contact email). Unidentified requests are limited to 1
+// A contact address in the User-Agent qualifies us for the identified 3 req/s limit
 const DEFAULT_RATE_LIMIT: u32 = 3;
 const MAX_REDIRECT_HOPS: u8 = 3;
 
-// TODO(openlibrary): OpenLibrary responses do not set cache headers, so the
-// shared HTTP cache middleware will not retain them. Add a bounded provider
-// cache if repeated lookups become a problem
+// TODO(openlibrary): OpenLibrary sends no cache headers, so the shared HTTP
+// cache middleware stores nothing. Add a bounded provider cache if lookups repeat
 pub struct OpenLibraryClient {
 	inner: ClientWithMiddleware,
 	base_url: String,
@@ -40,10 +40,7 @@ impl OpenLibraryClient {
 		)
 	}
 
-	/// Build a client pointed at an alternate base URL
-	///
-	/// Exposed so tests can run against a local HTTP server. Callers outside of
-	/// tests should use [`Self::new`].
+	/// Test hook for pointing the client at a local server. Use [`Self::new`]
 	#[doc(hidden)]
 	pub fn with_base_url(
 		base_url: String,
@@ -64,6 +61,7 @@ impl OpenLibraryClient {
 			.timeout(Duration::from_secs(15))
 			.build()
 			.expect("Failed to build OpenLibrary HTTP client");
+		// TODO(openlibrary): middleware retries bypass the rate limiter
 		let with_retry = build_client_with_retry(raw, RetryClientConfig::default());
 		let inner = ClientBuilder::from_client(with_retry)
 			.with(Cache(HttpCache {
@@ -80,8 +78,7 @@ impl OpenLibraryClient {
 		}
 	}
 
-	/// GET a JSON resource, following the `/type/redirect` stubs OpenLibrary
-	/// returns for merged or deleted records
+	// Redirect stubs point at the surviving record when OpenLibrary merges or deletes an entry
 	async fn get_json<T>(&self, path_and_query: &str) -> Result<T, MetadataProviderError>
 	where
 		T: DeserializeOwned,
@@ -110,7 +107,7 @@ impl OpenLibraryClient {
 		)))
 	}
 
-	/// Search works with a restricted field set to keep responses small
+	// A restricted field set keeps search responses small
 	pub async fn search(
 		&self,
 		query: &SearchQuery,
@@ -126,17 +123,14 @@ impl OpenLibraryClient {
 		self.get_json(&url).await
 	}
 
-	/// Fetch a work by OLID
 	pub async fn work(&self, id: &str) -> Result<Work, MetadataProviderError> {
 		self.get_by_id("/works", id).await
 	}
 
-	/// Fetch an edition by OLID
 	pub async fn edition(&self, id: &str) -> Result<Edition, MetadataProviderError> {
 		self.get_by_id("/books", id).await
 	}
 
-	/// Fetch an author by OLID
 	pub async fn author(&self, id: &str) -> Result<Author, MetadataProviderError> {
 		self.get_by_id("/authors", id).await
 	}
@@ -156,7 +150,6 @@ impl OpenLibraryClient {
 		self.get_json(&format!("{prefix}/{key}.json")).await
 	}
 
-	/// Resolve an ISBN through the redirecting ISBN endpoint to an edition
 	pub async fn edition_by_isbn(
 		&self,
 		isbn: &str,
@@ -168,7 +161,7 @@ impl OpenLibraryClient {
 		self.get_json(&format!("/isbn/{normalized}.json")).await
 	}
 
-	/// Editions carry publishers and ISBNs so the first edition enriches a work hit
+	// Editions fill in the ISBNs, page counts, and dates a work lacks
 	pub async fn work_editions(
 		&self,
 		work_id: &str,
@@ -184,7 +177,7 @@ impl OpenLibraryClient {
 	}
 }
 
-// 429 and 403 both signal rate limiting so they share retry and error handling
+// 429 and 403 both signal rate limiting, so they share handling
 fn map_status_error(error: reqwest::Error, path: Option<&str>) -> MetadataProviderError {
 	let status = error.status();
 	if status.is_some_and(|s| {

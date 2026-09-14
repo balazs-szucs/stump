@@ -3,9 +3,7 @@ use super::{
 	model::{Edition, SearchDoc, Work},
 };
 
-/// Prefer the title the user's query actually matched (the search doc), since
-/// `/works/{id}/editions.json` may list a translated or otherwise unrelated
-/// edition first
+/// Prefer the matched search title; the first edition returned can be a translation or reissue
 pub fn extract_title(
 	work: &Work,
 	edition: Option<&Edition>,
@@ -41,8 +39,7 @@ pub fn extract_subtitle(work: &Work, edition: Option<&Edition>) -> Option<String
 		})
 }
 
-/// Work descriptions are the canonical, aggregated text; edition descriptions
-/// are frequently absent or edition-specific marketing copy
+/// Work descriptions are canonical; edition descriptions are often absent or marketing copy
 pub fn extract_description(work: &Work, edition: Option<&Edition>) -> Option<String> {
 	let from_work = work.description.clone().map(|d| d.into_string());
 	let from_edition = edition
@@ -89,10 +86,10 @@ pub fn extract_isbn13(edition: &Edition, doc: Option<&SearchDoc>) -> Option<Stri
 	extract_isbn(edition, doc, 13)
 }
 
-// TODO(openlibrary): map goodreads/librarything identifiers and language once
-// the provider metadata types expose fields for them
+// TODO(openlibrary): map goodreads/librarything IDs and language once metadata supports them
 
 pub fn extract_series_info(edition: &Edition) -> Option<String> {
+	// TODO(openlibrary): editions can list multiple series; only the first is mapped
 	edition
 		.series
 		.first()

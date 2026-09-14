@@ -41,7 +41,7 @@ impl ProviderClientCache {
 		let decrypted_token = match encrypted_token {
 			Some(token) => decrypt_string(token, &self.encryption_key)
 				.map_err(|e| ProviderCacheError::DecryptionFailed(e.to_string()))?,
-			// OpenLibrary needs no token so a missing value is valid
+			// OpenLibrary needs no token, so a missing value is valid
 			None if config.provider_type == MetadataProviderEnum::OpenLibrary => {
 				String::new()
 			},

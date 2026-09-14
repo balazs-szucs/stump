@@ -30,7 +30,7 @@ pub fn create_provider(
 	match provider_type {
 		"COMIC_VINE" => Ok(Box::new(ComicVineClient::new(api_token, None))),
 		"HARDCOVER" => Ok(Box::new(HardcoverClient::new(api_token, None))),
-		// No token is required so any stored value is ignored
+		// OpenLibrary needs no token, so a stored value is ignored
 		"OPEN_LIBRARY" => Ok(Box::new(OpenLibraryProvider::default())),
 		_ => Err(MetadataProviderError::UnsupportedProvider(
 			provider_type.to_string(),

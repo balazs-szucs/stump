@@ -35,10 +35,7 @@ impl OpenLibraryProvider {
 		}
 	}
 
-	/// Build a provider around an existing client
-	///
-	/// Exposed so tests can run against a local HTTP server. Callers outside of
-	/// tests should use [`Self::new`].
+	/// Test hook for wrapping a client pointed at a local server. Use [`Self::new`]
 	#[doc(hidden)]
 	pub fn with_client(client: OpenLibraryClient) -> Self {
 		Self { client }
@@ -107,7 +104,7 @@ fn parse_year(value: Option<&str>) -> Option<i32> {
 	if let Ok(date) = dateparser::parse(text) {
 		return Some(date.year());
 	}
-	// Avoid slicing by byte index, which can split a multi-byte character
+	// Slicing by byte index can split a multibyte character
 	let digits: String = text
 		.chars()
 		.take_while(|c| c.is_ascii_digit())
@@ -142,8 +139,7 @@ fn empty_outcome() -> SearchOutcome {
 }
 
 impl OpenLibraryProvider {
-	/// Resolve author names, preferring names already present on the search doc
-	/// so a search result does not fan out into one request per author
+	// Search docs already carry author names, which avoids one request per author
 	async fn resolve_authors(
 		&self,
 		edition_keys: &[String],
@@ -162,6 +158,7 @@ impl OpenLibraryProvider {
 	}
 
 	async fn author_names_for_keys(&self, keys: &[String]) -> Option<Vec<String>> {
+		// TODO(openlibrary): authors past the first five are dropped
 		let mut names = Vec::new();
 		for key in keys.iter().take(MAX_AUTHORS) {
 			match self.client.author(key).await {
@@ -233,7 +230,7 @@ impl OpenLibraryProvider {
 		let year = year.or_else(|| parse_year(work_ref.first_publish_date.as_deref()));
 		let series_name = mapper::extract_series_info(&edition);
 		let cover = mapper::cover_url_for_edition(&edition, work_ref, doc);
-		// External media has no subtitle slot so a present subtitle joins the title
+		// Provider metadata has no subtitle field, so join it into the title
 		let title = mapper::extract_title(work_ref, Some(&edition), doc).map(|title| {
 			join_title_subtitle(title, mapper::extract_subtitle(work_ref, Some(&edition)))
 		});
@@ -245,8 +242,7 @@ impl OpenLibraryProvider {
 			summary: mapper::extract_description(work_ref, Some(&edition)),
 			page_count: edition.number_of_pages,
 			series_name,
-			// TODO(openlibrary): OpenLibrary editions only carry series names,
-			// so series cannot be linked by ID yet
+			// TODO(openlibrary): editions only carry a series name, so series cannot be linked by ID
 			series_external_id: None,
 			number: None,
 			year,
@@ -275,7 +271,7 @@ impl OpenLibraryProvider {
 		let cover = mapper::cover_url_for_edition(&Edition::default(), &work, doc);
 		let year = parse_year(work.first_publish_date.as_deref())
 			.or(doc.and_then(|d| d.first_publish_year));
-		// External media has no subtitle slot so a present subtitle joins the title
+		// Provider metadata has no subtitle field, so join it into the title
 		let title = mapper::extract_title(&work, None, doc).map(|title| {
 			join_title_subtitle(title, mapper::extract_subtitle(&work, None))
 		});
@@ -475,8 +471,7 @@ impl MetadataProvider for OpenLibraryProvider {
 		&self,
 		external_id: &str,
 	) -> Result<ExternalMediaMetadata, MetadataProviderError> {
-		// Candidates may point at either an edition or a work, so fall back to
-		// the work endpoint when the edition lookup 404s
+		// Candidates may be works or editions, so fall back to the work endpoint on 404
 		match self.client.edition(external_id).await {
 			Ok(edition) => self.media_from_edition(edition, None).await,
 			Err(MetadataProviderError::NotFound(_)) => {
@@ -489,7 +484,7 @@ impl MetadataProvider for OpenLibraryProvider {
 	async fn verify_credentials(
 		&self,
 	) -> Result<ProviderCredentialVerification, MetadataProviderError> {
-		// No token is required so a small search proves connectivity
+		// No token is required, so a search verifies connectivity
 		let probe = SearchQuery {
 			title: "dune".to_string(),
 			limit: Some(1),

@@ -1,6 +1,4 @@
-//! Integration tests for the OpenLibrary provider against a local HTTP server
-//!
-//! These tests are fully deterministic and never reach openlibrary.org.
+//! OpenLibrary provider tests against a local mock server, no live API calls
 
 use std::{
 	collections::HashMap,
@@ -131,7 +129,7 @@ fn reason_phrase(status: u16) -> &'static str {
 }
 
 fn provider_for(server: &MockServer) -> OpenLibraryProvider {
-	// A high rate limit keeps tests fast and avoids sleeping between requests
+	// High rate limit keeps tests from sleeping on the limiter
 	let client = OpenLibraryClient::with_base_url(server.base_url(), None, Some(1000));
 	OpenLibraryProvider::with_client(client)
 }
@@ -180,7 +178,7 @@ async fn isbn_lookup_maps_edition_metadata() {
 	let provider = provider_for(&server);
 
 	let query = SearchQuery {
-		// Deliberately hyphenated to exercise ISBN normalization
+		// Hyphenated on purpose to exercise ISBN normalization
 		isbn: Some("978-0-441-17271-9".to_string()),
 		..Default::default()
 	};
@@ -478,8 +476,7 @@ async fn forbidden_maps_to_rate_limited() {
 	);
 }
 
-/// 429s are retried with backoff before surfacing as a rate-limit error, so
-/// this test intentionally sleeps through the retry policy
+// Retries sleep through the backoff, so this test is slow on purpose
 #[tokio::test]
 async fn too_many_requests_exhausts_retries() {
 	let server = MockServer::start(vec![("/search.json", Reply::Status(429))]).await;
@@ -540,8 +537,7 @@ async fn unexpected_search_status_propagates() {
 	assert!(provider.search_media(&query).await.is_err());
 }
 
-/// The first edition OL returns is not necessarily a good match for the query,
-/// so search results should use the title the user actually searched for
+// The first edition is not necessarily the query match, so search uses the queried title
 #[tokio::test]
 async fn search_result_prefers_doc_title_over_first_edition() {
 	let server = MockServer::start(vec![

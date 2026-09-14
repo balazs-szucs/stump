@@ -64,8 +64,7 @@ fn tokens_match(a: &str, b: &str) -> bool {
 	a == b || strsim::jaro_winkler(a, b) > 0.90
 }
 
-/// ISBNs are frequently written with hyphens or spaces, so comparisons must
-/// normalize to the bare digits (and trailing X) before matching
+/// ISBNs are often written with separators, so compare the normalized digits
 fn normalize_isbn(raw: &str) -> String {
 	raw.chars()
 		.filter(|c| c.is_ascii_alphanumeric())
