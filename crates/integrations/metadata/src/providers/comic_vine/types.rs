@@ -1,5 +1,5 @@
-use crate::serde_utils::string_or_number;
 use crate::types::SearchQuery;
+use crate::utils::string_or_number;
 use serde::Deserialize;
 
 /// Filter builder for ComicVine issues search

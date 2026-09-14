@@ -1,18 +1,15 @@
 pub mod client;
-mod date;
 pub mod error;
-mod isbn;
 pub mod merge;
 mod provider;
 mod providers;
 pub mod rate_limit;
 pub mod scoring;
-pub(crate) mod serde_utils;
 pub mod types;
+pub(crate) mod utils;
 
 pub use client::build_client_with_retry;
 pub use error::{MetadataProviderError, MetadataResult};
-pub use isbn::normalize_isbn;
 pub use merge::{AutoApplyConfig, FieldMerger, MergeStrategy, MetadataFieldOverride};
 pub use provider::{MetadataProvider, ProviderCredentialVerification};
 pub use providers::openlibrary;
@@ -23,6 +20,7 @@ pub use types::{
 	MatchCandidate, MediaType, MetadataField, PublicationStatus, SearchOutcome,
 	SearchQuery,
 };
+pub use utils::normalize_isbn;
 
 use providers::{ComicVineClient, HardcoverClient, OpenLibraryProvider};
 

@@ -4,7 +4,6 @@ use super::{
 	model::{Edition, SearchDoc, Work},
 };
 use crate::{
-	date::{parse_date_parts, parse_year},
 	error::MetadataProviderError,
 	normalize_isbn,
 	provider::ProviderCredentialVerification,
@@ -12,6 +11,7 @@ use crate::{
 		ExternalMediaMetadata, ExternalSeriesMetadata, MatchCandidate, MediaType,
 		SearchOutcome, SearchQuery,
 	},
+	utils::{parse_date_parts, parse_year},
 	ExternalMetadata, MetadataProvider,
 };
 
@@ -276,8 +276,15 @@ impl OpenLibraryProvider {
 		&self,
 		isbn: &str,
 	) -> Result<MatchCandidate, MetadataProviderError> {
+		let normalized = normalize_isbn(isbn);
 		let edition = self.client.edition_by_isbn(isbn).await?;
-		let metadata = self.media_from_edition(edition, None).await?;
+		let mut metadata = self.media_from_edition(edition, None).await?;
+		// NOTE: the edition may only list the other ISBN format, so keep the queried one
+		match normalized.len() {
+			10 => metadata.isbn = Some(normalized),
+			13 => metadata.isbn_13 = Some(normalized),
+			_ => {},
+		}
 		Ok(MatchCandidate {
 			external_id: metadata.external_id.clone(),
 			metadata: ExternalMetadata::Media(metadata),

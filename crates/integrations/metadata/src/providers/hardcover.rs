@@ -6,11 +6,11 @@ use crate::{
 	client::{build_client_with_retry, RetryClientConfig},
 	error::MetadataProviderError,
 	provider::ProviderCredentialVerification,
-	serde_utils::string_or_number,
 	types::{
 		ExternalMediaMetadata, ExternalSeriesMetadata, MatchCandidate, MediaType,
 		SearchOutcome, SearchQuery,
 	},
+	utils::string_or_number,
 	ExternalMetadata, MetadataProvider, RateLimiter,
 };
 

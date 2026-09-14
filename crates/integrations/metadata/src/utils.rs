@@ -1,6 +1,29 @@
 use chrono::Datelike;
+use serde::{Deserialize, Deserializer};
 
-/// Pull a year from a free-form date string, falling back to leading digits
+/// Some providers don't seem to use consistent IDs across the API which is a bit annoying.
+/// This handles strings/numbers and returns a string for consistency
+pub fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let value = serde_json::Value::deserialize(deserializer)?;
+	match value {
+		serde_json::Value::String(s) => Ok(s),
+		serde_json::Value::Number(n) => Ok(n.to_string()),
+		_ => Err(serde::de::Error::custom("expected string or number")),
+	}
+}
+
+/// Strip ISBN separators so comparisons and API paths use the bare digits
+pub fn normalize_isbn(raw: &str) -> String {
+	raw.chars()
+		.filter(|c| c.is_ascii_alphanumeric())
+		.collect::<String>()
+		.to_uppercase()
+}
+
+/// Pull a year from a free-form date string, falling back to the first four digit run
 pub(crate) fn parse_year(value: &str) -> Option<i32> {
 	let text = value.trim();
 	if text.is_empty() {
@@ -9,17 +32,10 @@ pub(crate) fn parse_year(value: &str) -> Option<i32> {
 	if let Ok(date) = dateparser::parse(text) {
 		return Some(date.year());
 	}
-	// Slicing by byte index can split a multibyte character
-	let digits: String = text
-		.chars()
-		.take_while(|c| c.is_ascii_digit())
-		.take(4)
-		.collect();
-	if digits.len() == 4 {
-		digits.parse().ok()
-	} else {
-		None
-	}
+	// Records mix months and years, so take the first four digit run
+	text.split(|c: char| !c.is_ascii_digit())
+		.find(|part| part.len() == 4)
+		.and_then(|part| part.parse().ok())
 }
 
 /// Pull the year, month, and day out of a free-form date string
@@ -48,16 +64,17 @@ mod tests {
 	}
 
 	#[test]
-	fn year_falls_back_to_leading_digits() {
+	fn year_falls_back_to_first_digit_run() {
 		assert_eq!(parse_year("1988."), Some(1988));
 		assert_eq!(parse_year("1988"), Some(1988));
+		assert_eq!(parse_year("January 1938"), Some(1938));
 		assert_eq!(parse_year("19"), None);
 	}
 
 	#[test]
 	fn year_handles_multibyte_text_without_panicking() {
 		assert_eq!(parse_year("日本語"), None);
-		assert_eq!(parse_year("©1988"), None);
+		assert_eq!(parse_year("©1988"), Some(1988));
 	}
 
 	#[test]
