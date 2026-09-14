@@ -32,13 +32,20 @@ export const createConfig = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ['apiToken'],
-				message: 'This provider requires an API token',
+				message: 'required',
 			})
 		}
 	})
 	//  Note: I don't _think_ this has perf implications, but ensures the form
 	// will stay in sync with CreateMetadataProviderConfigInput
-	.transform((data) => data satisfies CreateMetadataProviderConfigInput)
+	//  Providers without credentials must omit the token entirely
+	.transform(
+		({ apiToken, ...data }) =>
+			({
+				...data,
+				...(apiToken ? { apiToken } : {}),
+			}) satisfies CreateMetadataProviderConfigInput,
+	)
 export type CreateProviderConfigSchema = z.infer<typeof createConfig>
 
 export const patchConfig = z

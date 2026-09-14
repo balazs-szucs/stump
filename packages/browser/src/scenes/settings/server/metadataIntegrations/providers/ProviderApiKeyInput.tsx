@@ -3,6 +3,7 @@ import { Alert, AlertDescription, AlertTitle, PasswordInput } from '@stump/compo
 import {
 	extractErrorMessage,
 	graphql,
+	MetadataProvider,
 	ProviderApiKeyInputValidateKeyMutation,
 } from '@stump/graphql'
 import { useLocaleContext } from '@stump/i18n'
@@ -23,16 +24,17 @@ const verificationMutation = graphql(`
 	}
 `)
 
-export function ProviderApiKeyInput() {
+type Props = {
+	provider: MetadataProvider
+}
+
+export function ProviderApiKeyInput({ provider }: Props) {
 	const form = useFormContext<CreateProviderConfigSchema>()
 
 	const { t } = useLocaleContext()
 	const { errors } = useFormState({ control: form.control })
 
-	const [provider, value] = useWatch({
-		control: form.control,
-		name: ['providerType', 'apiToken'],
-	})
+	const value = useWatch({ control: form.control, name: 'apiToken' })
 
 	const [debouncedValue] = useDebouncedValue(value, 500)
 
@@ -84,6 +86,10 @@ export function ProviderApiKeyInput() {
 		? extractErrorMessage(criticalError, t(getKey('apiToken.validationRequestErrorUnknown')))
 		: null
 
+	const tokenError = errors.apiToken
+	const errorMessage =
+		tokenError?.type === 'custom' ? t(getKey('apiToken.required')) : tokenError?.message
+
 	return (
 		<>
 			<PasswordInput
@@ -91,7 +97,7 @@ export function ProviderApiKeyInput() {
 				description={t(getKey('apiToken.description'))}
 				type="password"
 				{...form.register('apiToken')}
-				errorMessage={errors.apiToken?.message}
+				errorMessage={errorMessage}
 				fullWidth
 			/>
 

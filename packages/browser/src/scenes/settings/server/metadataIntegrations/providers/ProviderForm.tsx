@@ -53,7 +53,7 @@ export default function ProviderForm({ provider }: Props) {
 	return (
 		<>
 			{requiresToken ? (
-				<ProviderApiKeyInput />
+				<ProviderApiKeyInput provider={provider} />
 			) : (
 				<Alert variant="info">
 					<AlertTitle>{t(getKey('apiToken.notRequired.title'))}</AlertTitle>
