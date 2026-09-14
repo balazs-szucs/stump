@@ -413,6 +413,21 @@ async fn redirect_stub_is_followed() {
 }
 
 #[tokio::test]
+async fn cross_origin_redirect_is_refused() {
+	let stub = r#"{
+		"key": "/works/OL99999W",
+		"location": "https://example.com/works/OL45804W",
+		"type": { "key": "/type/redirect" }
+	}"#;
+	let server =
+		MockServer::start(vec![("/works/OL99999W.json", Reply::Json(stub))]).await;
+	let client = OpenLibraryClient::with_base_url(server.base_url(), None, Some(1000));
+
+	assert!(client.work("OL99999W").await.is_err());
+	assert_eq!(server.requests().len(), 1);
+}
+
+#[tokio::test]
 async fn no_results_returns_empty_outcome() {
 	let server = MockServer::start(vec![(
 		"/search.json",

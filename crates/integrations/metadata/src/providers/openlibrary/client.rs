@@ -103,9 +103,16 @@ impl OpenLibraryClient {
 			let value: serde_json::Value =
 				response.json().await.map_err(MetadataProviderError::from)?;
 			if let Some(target) = is_redirect_stub(&value) {
-				url = url.join(&redirect_path(&target)).map_err(|e| {
+				let next = url.join(&redirect_path(&target)).map_err(|e| {
 					MetadataProviderError::Other(format!("Invalid redirect: {e}"))
 				})?;
+				// NOTE: only follow redirects that stay on the OpenLibrary origin
+				if next.origin() != initial.origin() {
+					return Err(MetadataProviderError::Other(format!(
+						"Refusing cross-origin redirect from {initial} to {next}"
+					)));
+				}
+				url = next;
 				continue;
 			}
 			return serde_json::from_value(value).map_err(MetadataProviderError::from);
