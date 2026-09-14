@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form'
 
 import { PROVIDER_LABELS } from './constants'
 import ProviderForm from './ProviderForm'
-import { createConfig, getPatchDefaults, PatchProviderConfigSchema } from './schema'
+import { getPatchDefaults, patchConfig, PatchProviderConfigSchema } from './schema'
 
 const mutation = graphql(`
 	mutation EditProviderDialog($id: Int!, $input: PatchMetadataProviderConfigInput!) {
@@ -42,7 +42,7 @@ export function EditProviderDialog({ provider }: Props) {
 
 	const form = useForm<PatchProviderConfigSchema>({
 		defaultValues: getPatchDefaults(provider),
-		resolver: zodResolver(createConfig),
+		resolver: zodResolver(patchConfig),
 	})
 
 	const { t } = useLocaleContext()
@@ -103,7 +103,7 @@ export function EditProviderDialog({ provider }: Props) {
 					</Dialog.Header>
 
 					<Form form={form} onSubmit={handleSubmit} id="edit-provider-form" className="py-2">
-						<ProviderForm />
+						<ProviderForm provider={provider.providerType} />
 					</Form>
 
 					<Dialog.Footer>

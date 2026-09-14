@@ -9,15 +9,20 @@ import {
 	RawSwitch,
 	Text,
 } from '@stump/components'
-import { MergeStrategy } from '@stump/graphql'
+import { MergeStrategy, MetadataProvider } from '@stump/graphql'
 import { useLocaleContext } from '@stump/i18n'
 import { startOfDay } from 'date-fns'
 import { useFormContext, useFormState, useWatch } from 'react-hook-form'
 
+import { providerRequiresToken } from './constants'
 import { ProviderApiKeyInput } from './ProviderApiKeyInput'
 import { PatchProviderConfigSchema } from './schema'
 
-export default function ProviderForm() {
+type Props = {
+	provider: MetadataProvider
+}
+
+export default function ProviderForm({ provider }: Props) {
 	const form = useFormContext<PatchProviderConfigSchema>()
 	const { t } = useLocaleContext()
 	const { errors } = useFormState({ control: form.control })
@@ -26,6 +31,8 @@ export default function ProviderForm() {
 		control: form.control,
 		name: ['enabled', 'autoApplyConfig.enabled', 'apiTokenExpiresAt'],
 	})
+
+	const requiresToken = providerRequiresToken(provider)
 
 	const strategyOptions = [
 		{
@@ -44,19 +51,27 @@ export default function ProviderForm() {
 
 	return (
 		<>
-			<ProviderApiKeyInput />
+			{requiresToken ? (
+				<ProviderApiKeyInput />
+			) : (
+				<Alert variant="info">
+					<AlertDescription>{t(getKey('apiToken.notRequired'))}</AlertDescription>
+				</Alert>
+			)}
 
-			<div className="gap-2 flex flex-col">
-				<Label>{t(getKey('apiTokenExpiresAt.label'))}</Label>
-				<DatePicker
-					minDate={startOfDay(new Date())}
-					selected={expirationDate ?? undefined}
-					onChange={(date) => form.setValue('apiTokenExpiresAt', date)}
-				/>
-				<Text className="text-sm text-muted-foreground">
-					{t(getKey('apiTokenExpiresAt.description'))}
-				</Text>
-			</div>
+			{requiresToken && (
+				<div className="gap-2 flex flex-col">
+					<Label>{t(getKey('apiTokenExpiresAt.label'))}</Label>
+					<DatePicker
+						minDate={startOfDay(new Date())}
+						selected={expirationDate ?? undefined}
+						onChange={(date) => form.setValue('apiTokenExpiresAt', date)}
+					/>
+					<Text className="text-sm text-muted-foreground">
+						{t(getKey('apiTokenExpiresAt.description'))}
+					</Text>
+				</div>
+			)}
 
 			<div className="divide-y divide-border rounded-lg border border-border">
 				<div className="gap-2 flex flex-col">

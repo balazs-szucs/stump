@@ -2514,7 +2514,8 @@
 					"validationRequestErrorUnknown": "An unknown error occurred during validation",
 					"providerStatusError": "The provider responded with status {{status}}",
 					"providerError": "The provider responded with an error: {{message}}",
-					"noBearerPrefixRequired": "Remove the 'Bearer ' prefix from the API token"
+					"noBearerPrefixRequired": "Remove the 'Bearer ' prefix from the API token",
+					"notRequired": "This provider does not require an API token"
 				},
 				"apiTokenExpiresAt": {
 					"label": "API token expiration",

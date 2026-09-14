@@ -7,6 +7,8 @@ import {
 } from '@stump/graphql'
 import z from 'zod'
 
+import { providerRequiresToken } from './constants'
+
 const providerType = z.nativeEnum(MetadataProvider)
 const mergeStrategy = z.nativeEnum(MergeStrategy)
 
@@ -21,9 +23,18 @@ export const createConfig = z
 	.object({
 		providerType,
 		enabled: z.boolean().default(true),
-		apiToken: z.string().min(1),
+		apiToken: z.string().default(''),
 		apiTokenExpiresAt: z.date().nullish(),
 		autoApplyConfig,
+	})
+	.superRefine(({ providerType, apiToken }, ctx) => {
+		if (providerRequiresToken(providerType) && !apiToken) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['apiToken'],
+				message: 'This provider requires an API token',
+			})
+		}
 	})
 	//  Note: I don't _think_ this has perf implications, but ensures the form
 	// will stay in sync with CreateMetadataProviderConfigInput
