@@ -443,8 +443,8 @@ input CreateCustomEmojiInput {
 input CreateMetadataProviderConfigInput {
 	"The provider type"
 	providerType: MetadataProvider!
-	"The API token for authenticating with the provider"
-	apiToken: String!
+	"The API token for authenticating with the provider, if the provider needs one"
+	apiToken: String
 	"Whether the provider is enabled"
 	enabled: Boolean
 	"Auto-apply configuration"

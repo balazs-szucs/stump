@@ -497,8 +497,8 @@ export type CreateCustomEmojiInput = {
 
 /** Input object for creating a metadata provider configuration */
 export type CreateMetadataProviderConfigInput = {
-  /** The API token for authenticating with the provider */
-  apiToken: Scalars['String']['input'];
+  /** The API token for authenticating with the provider, if the provider needs one */
+  apiToken?: InputMaybe<Scalars['String']['input']>;
   /**
    * Optional expiration date for the API key. This is exclusively a QOL thing,
    * since the creds don't live within the management domain of Stump

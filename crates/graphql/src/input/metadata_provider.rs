@@ -9,8 +9,8 @@ use stump_core::utils::encryption::encrypt_string;
 pub struct CreateMetadataProviderConfigInput {
 	/// The provider type
 	pub provider_type: MetadataProvider,
-	/// The API token for authenticating with the provider
-	pub api_token: String,
+	/// The API token for authenticating with the provider, if the provider needs one
+	pub api_token: Option<String>,
 	/// Whether the provider is enabled
 	pub enabled: Option<bool>,
 	/// Auto-apply configuration
@@ -25,7 +25,10 @@ impl CreateMetadataProviderConfigInput {
 		self,
 		encryption_key: &String,
 	) -> Result<metadata_provider_config::ActiveModel> {
-		let encrypted_api_token = encrypt_string(&self.api_token, encryption_key)?;
+		let encrypted_api_token = self
+			.api_token
+			.map(|token| encrypt_string(&token, encryption_key))
+			.transpose()?;
 
 		let auto_apply_json = self
 			.auto_apply_config
@@ -37,7 +40,7 @@ impl CreateMetadataProviderConfigInput {
 			id: NotSet,
 			provider_type: Set(self.provider_type),
 			enabled: Set(self.enabled.unwrap_or(true)),
-			encrypted_api_token: Set(Some(encrypted_api_token)),
+			encrypted_api_token: Set(encrypted_api_token),
 			api_token_expires_at: Set(self.api_token_expires_at),
 			auto_apply_config: auto_apply_json.map(|v| Set(Some(v))).unwrap_or(NotSet),
 			created_at: NotSet,
