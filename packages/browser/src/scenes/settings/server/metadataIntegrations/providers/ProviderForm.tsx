@@ -1,6 +1,7 @@
 import {
 	Alert,
 	AlertDescription,
+	AlertTitle,
 	cn,
 	DatePicker,
 	Input,
@@ -55,7 +56,8 @@ export default function ProviderForm({ provider }: Props) {
 				<ProviderApiKeyInput />
 			) : (
 				<Alert variant="info">
-					<AlertDescription>{t(getKey('apiToken.notRequired'))}</AlertDescription>
+					<AlertTitle>{t(getKey('apiToken.notRequired.title'))}</AlertTitle>
+					<AlertDescription>{t(getKey('apiToken.notRequired.description'))}</AlertDescription>
 				</Alert>
 			)}
 

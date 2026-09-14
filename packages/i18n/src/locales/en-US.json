@@ -2515,7 +2515,10 @@
 					"providerStatusError": "The provider responded with status {{status}}",
 					"providerError": "The provider responded with an error: {{message}}",
 					"noBearerPrefixRequired": "Remove the 'Bearer ' prefix from the API token",
-					"notRequired": "This provider does not require an API token"
+					"notRequired": {
+						"title": "No API key required",
+						"description": "Open Library is a free, open catalog. Stump does not need credentials to use it."
+					}
 				},
 				"apiTokenExpiresAt": {
 					"label": "API token expiration",
