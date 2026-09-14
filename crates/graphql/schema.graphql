@@ -1777,6 +1777,8 @@ enum MetadataProvider {
 	HARDCOVER
 	"ComicVine (https://comicvine.gamespot.com/api/)"
 	COMIC_VINE
+	"OpenLibrary (https://openlibrary.org)"
+	OPEN_LIBRARY
 }
 
 type MetadataProviderConfigModel {

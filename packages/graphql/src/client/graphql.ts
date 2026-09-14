@@ -1890,7 +1890,9 @@ export enum MetadataProvider {
   /** ComicVine (https://comicvine.gamespot.com/api/) */
   ComicVine = 'COMIC_VINE',
   /** Hardcover (https://hardcover.app) */
-  Hardcover = 'HARDCOVER'
+  Hardcover = 'HARDCOVER',
+  /** OpenLibrary (https://openlibrary.org) */
+  OpenLibrary = 'OPEN_LIBRARY'
 }
 
 export type MetadataProviderConfigModel = {
