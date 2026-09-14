@@ -1,7 +1,5 @@
-use super::{
-	client::normalize_isbn,
-	model::{Edition, SearchDoc, Work},
-};
+use super::model::{Edition, SearchDoc, Work};
+use crate::normalize_isbn;
 
 /// Prefer the matched search title; the first edition returned can be a translation or reissue
 pub fn extract_title(
@@ -50,14 +48,6 @@ pub fn extract_description(work: &Work, edition: Option<&Edition>) -> Option<Str
 		.or_else(|| from_edition.filter(|s| !s.trim().is_empty()))
 }
 
-fn normalize_isbn_list(values: &[String]) -> Vec<String> {
-	values
-		.iter()
-		.map(|v| normalize_isbn(v))
-		.filter(|v| !v.is_empty())
-		.collect()
-}
-
 fn extract_isbn(
 	edition: &Edition,
 	doc: Option<&SearchDoc>,
@@ -67,15 +57,9 @@ fn extract_isbn(
 		.isbn_10
 		.iter()
 		.chain(edition.isbn_13.iter())
+		.chain(doc.into_iter().flat_map(|d| d.isbn.iter()))
 		.map(|v| normalize_isbn(v))
 		.find(|v| v.len() == len)
-		.or_else(|| {
-			doc.and_then(|d| {
-				normalize_isbn_list(&d.isbn)
-					.into_iter()
-					.find(|v| v.len() == len)
-			})
-		})
 }
 
 pub fn extract_isbn10(edition: &Edition, doc: Option<&SearchDoc>) -> Option<String> {

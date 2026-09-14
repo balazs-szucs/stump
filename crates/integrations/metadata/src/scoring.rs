@@ -1,4 +1,7 @@
-use crate::types::{ConfidenceFactor, ExternalMetadata, MatchCandidate, SearchQuery};
+use crate::{
+	normalize_isbn,
+	types::{ConfidenceFactor, ExternalMetadata, MatchCandidate, SearchQuery},
+};
 
 // Note: This is really iffy right now! I've mostly been running a bunch of tests to try and get
 // a baseline to normalize against. I expect this to change as the feature actually gets used
@@ -62,14 +65,6 @@ fn tokenize(title: &str) -> Vec<String> {
 /// Check if two tokens match fuzzily (Jaro-Winkler > 0.90)
 fn tokens_match(a: &str, b: &str) -> bool {
 	a == b || strsim::jaro_winkler(a, b) > 0.90
-}
-
-/// ISBNs are often written with separators, so compare the normalized digits
-fn normalize_isbn(raw: &str) -> String {
-	raw.chars()
-		.filter(|c| c.is_ascii_alphanumeric())
-		.collect::<String>()
-		.to_uppercase()
 }
 
 /// Compute a token-overlap score between a query and candidate title

@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use crate::providers::comic_vine::types::IssueSlim;
 
 use super::types::PersonCredit;
@@ -42,20 +40,6 @@ pub(crate) fn extract_issue_id(issues: &[IssueSlim], number: f32) -> Option<Stri
 			.unwrap_or(false)
 	});
 	matched_issue.map(|i| i.id.clone())
-}
-
-/// Take a date string and attempt to pull the year, month, and day out of it
-pub(crate) fn parse_date_parts(
-	date_str: &str,
-) -> (Option<i32>, Option<i32>, Option<i32>) {
-	let Some(dt) = dateparser::parse(date_str).ok() else {
-		return (None, None, None);
-	};
-	(
-		Some(dt.year()),
-		Some(dt.month() as i32),
-		Some(dt.day() as i32),
-	)
 }
 
 /// Return either the given vector or None if it's empty

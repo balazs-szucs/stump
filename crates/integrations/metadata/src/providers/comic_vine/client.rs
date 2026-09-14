@@ -4,11 +4,10 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 
 use crate::{
 	client::{build_client_with_retry, RetryClientConfig},
+	date::parse_date_parts,
 	error::MetadataProviderError,
 	provider::ProviderCredentialVerification,
-	providers::comic_vine::utils::{
-		extract_issue_id, filled_array_or_none, parse_date_parts,
-	},
+	providers::comic_vine::utils::{extract_issue_id, filled_array_or_none},
 	types::{
 		ExternalMediaMetadata, ExternalSeriesMetadata, MatchCandidate, MediaType,
 		SearchQuery,

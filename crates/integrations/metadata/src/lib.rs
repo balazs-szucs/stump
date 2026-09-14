@@ -1,5 +1,7 @@
 pub mod client;
+mod date;
 pub mod error;
+mod isbn;
 pub mod merge;
 mod provider;
 mod providers;
@@ -10,6 +12,7 @@ pub mod types;
 
 pub use client::build_client_with_retry;
 pub use error::{MetadataProviderError, MetadataResult};
+pub use isbn::normalize_isbn;
 pub use merge::{AutoApplyConfig, FieldMerger, MergeStrategy, MetadataFieldOverride};
 pub use provider::{MetadataProvider, ProviderCredentialVerification};
 pub use providers::openlibrary;

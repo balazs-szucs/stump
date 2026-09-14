@@ -11,6 +11,7 @@ use super::model::{
 use crate::{
 	client::{build_client_with_retry, RetryClientConfig},
 	error::MetadataProviderError,
+	normalize_isbn,
 	types::SearchQuery,
 	RateLimiter,
 };
@@ -203,13 +204,6 @@ fn map_status_error(error: reqwest::Error, path: Option<&str>) -> MetadataProvid
 	} else {
 		MetadataProviderError::ReqwestError(error)
 	}
-}
-
-pub fn normalize_isbn(raw: &str) -> String {
-	raw.chars()
-		.filter(|c| c.is_ascii_alphanumeric())
-		.collect::<String>()
-		.to_uppercase()
 }
 
 fn redirect_path(target: &str) -> String {

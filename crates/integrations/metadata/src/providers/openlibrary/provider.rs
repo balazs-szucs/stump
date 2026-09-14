@@ -1,12 +1,12 @@
-use chrono::Datelike;
-
 use super::{
-	client::{normalize_isbn, OpenLibraryClient},
+	client::OpenLibraryClient,
 	mapper,
 	model::{Edition, SearchDoc, Work},
 };
 use crate::{
+	date::{parse_date_parts, parse_year},
 	error::MetadataProviderError,
+	normalize_isbn,
 	provider::ProviderCredentialVerification,
 	types::{
 		ExternalMediaMetadata, ExternalSeriesMetadata, MatchCandidate, MediaType,
@@ -99,45 +99,6 @@ fn join_title_subtitle(title: String, subtitle: Option<String>) -> String {
 	}
 }
 
-fn parse_year(value: Option<&str>) -> Option<i32> {
-	let text = value.map(str::trim).filter(|s| !s.is_empty())?;
-	if let Ok(date) = dateparser::parse(text) {
-		return Some(date.year());
-	}
-	// Slicing by byte index can split a multibyte character
-	let digits: String = text
-		.chars()
-		.take_while(|c| c.is_ascii_digit())
-		.take(4)
-		.collect();
-	if digits.len() == 4 {
-		digits.parse().ok()
-	} else {
-		None
-	}
-}
-
-fn parse_date_parts(value: Option<&str>) -> (Option<i32>, Option<i32>, Option<i32>) {
-	let Some(text) = value.map(str::trim).filter(|s| !s.is_empty()) else {
-		return (None, None, None);
-	};
-	match dateparser::parse(text) {
-		Ok(date) => (
-			Some(date.year()),
-			Some(date.month() as i32),
-			Some(date.day() as i32),
-		),
-		Err(_) => (parse_year(Some(text)), None, None),
-	}
-}
-
-fn empty_outcome() -> SearchOutcome {
-	SearchOutcome {
-		candidates: vec![],
-		requested: 0,
-	}
-}
-
 impl OpenLibraryProvider {
 	// Search docs already carry author names, which avoids one request per author
 	async fn resolve_authors(
@@ -189,7 +150,10 @@ impl OpenLibraryProvider {
 			work.authors.iter().map(|a| a.author.key.clone()).collect();
 		let authors = self.resolve_authors(&[], &keys, doc).await;
 		let cover = mapper::cover_url_for_edition(&Edition::default(), &work, doc);
-		let year = parse_year(work.first_publish_date.as_deref())
+		let year = work
+			.first_publish_date
+			.as_deref()
+			.and_then(parse_year)
 			.or(doc.and_then(|d| d.first_publish_year));
 
 		Ok(ExternalSeriesMetadata {
@@ -226,8 +190,13 @@ impl OpenLibraryProvider {
 		let authors = self
 			.resolve_authors(&edition_author_keys, &work_author_keys, doc)
 			.await;
-		let (year, month, day) = parse_date_parts(edition.publish_date.as_deref());
-		let year = year.or_else(|| parse_year(work_ref.first_publish_date.as_deref()));
+		let (year, month, day) = edition
+			.publish_date
+			.as_deref()
+			.map(parse_date_parts)
+			.unwrap_or((None, None, None));
+		let year =
+			year.or_else(|| work_ref.first_publish_date.as_deref().and_then(parse_year));
 		let series_name = mapper::extract_series_info(&edition);
 		let cover = mapper::cover_url_for_edition(&edition, work_ref, doc);
 		// Provider metadata has no subtitle field, so join it into the title
@@ -269,7 +238,10 @@ impl OpenLibraryProvider {
 			work.authors.iter().map(|a| a.author.key.clone()).collect();
 		let authors = self.resolve_authors(&[], &keys, doc).await;
 		let cover = mapper::cover_url_for_edition(&Edition::default(), &work, doc);
-		let year = parse_year(work.first_publish_date.as_deref())
+		let year = work
+			.first_publish_date
+			.as_deref()
+			.and_then(parse_year)
 			.or(doc.and_then(|d| d.first_publish_year));
 		// Provider metadata has no subtitle field, so join it into the title
 		let title = mapper::extract_title(&work, None, doc).map(|title| {
@@ -335,7 +307,7 @@ impl MetadataProvider for OpenLibraryProvider {
 		query: &SearchQuery,
 	) -> Result<SearchOutcome, MetadataProviderError> {
 		if is_empty_query(query) {
-			return Ok(empty_outcome());
+			return Ok(SearchOutcome::default());
 		}
 		if let Some(isbn) = isbn_param(query) {
 			match self.client.edition_by_isbn(isbn).await {
@@ -357,12 +329,12 @@ impl MetadataProvider for OpenLibraryProvider {
 						return Ok(self.scored_outcome(query, candidate));
 					}
 					if !has_text_query(query) {
-						return Ok(empty_outcome());
+						return Ok(SearchOutcome::default());
 					}
 				},
 				Err(MetadataProviderError::NotFound(_)) => {
 					if !has_text_query(query) {
-						return Ok(empty_outcome());
+						return Ok(SearchOutcome::default());
 					}
 				},
 				Err(e) => return Err(e),
@@ -404,7 +376,7 @@ impl MetadataProvider for OpenLibraryProvider {
 		query: &SearchQuery,
 	) -> Result<SearchOutcome, MetadataProviderError> {
 		if is_empty_query(query) {
-			return Ok(empty_outcome());
+			return Ok(SearchOutcome::default());
 		}
 		if let Some(isbn) = isbn_param(query) {
 			match self.isbn_media_candidate(isbn).await {
@@ -413,7 +385,7 @@ impl MetadataProvider for OpenLibraryProvider {
 				},
 				Err(MetadataProviderError::NotFound(_)) => {
 					if !has_text_query(query) {
-						return Ok(empty_outcome());
+						return Ok(SearchOutcome::default());
 					}
 				},
 				Err(e) => return Err(e),
@@ -550,40 +522,6 @@ mod tests {
 			..Default::default()
 		};
 		assert!(is_empty_query(&query));
-	}
-
-	#[test]
-	fn year_parses_from_long_date() {
-		assert_eq!(parse_year(Some("October 1, 1988")), Some(1988));
-	}
-
-	#[test]
-	fn year_falls_back_to_leading_digits() {
-		assert_eq!(parse_year(Some("1988.")), Some(1988));
-		assert_eq!(parse_year(Some("1988")), Some(1988));
-		assert_eq!(parse_year(Some("19")), None);
-	}
-
-	#[test]
-	fn year_handles_multibyte_text_without_panicking() {
-		assert_eq!(parse_year(Some("日本語")), None);
-		assert_eq!(parse_year(Some("©1988")), None);
-	}
-
-	#[test]
-	fn date_parts_fall_back_to_year() {
-		let (year, month, day) = parse_date_parts(Some("1988"));
-		assert_eq!(year, Some(1988));
-		assert_eq!(month, None);
-		assert_eq!(day, None);
-	}
-
-	#[test]
-	fn date_parts_parse_full_date() {
-		let (year, month, day) = parse_date_parts(Some("October 1, 1988"));
-		assert_eq!(year, Some(1988));
-		assert_eq!(month, Some(10));
-		assert_eq!(day, Some(1));
 	}
 
 	#[test]

@@ -1,8 +1,9 @@
 use metadata_integrations::{
+	normalize_isbn,
 	openlibrary::{
 		mapper,
 		model::{is_redirect_stub, strip_key, Edition, SearchResponse, Work},
-		normalize_isbn, OpenLibraryProvider,
+		OpenLibraryProvider,
 	},
 	MetadataProvider, SearchQuery,
 };
