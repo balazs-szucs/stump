@@ -1,7 +1,6 @@
 //! OpenLibrary provider tests against a local mock server, no live API calls
 
 use std::{
-	collections::HashMap,
 	net::SocketAddr,
 	sync::{Arc, Mutex},
 };
@@ -10,16 +9,17 @@ use metadata_integrations::{
 	openlibrary::{OpenLibraryClient, OpenLibraryProvider},
 	MetadataProvider, SearchQuery,
 };
+use reqwest::StatusCode;
 use tokio::{
-	io::{AsyncReadExt, AsyncWriteExt},
-	net::TcpListener,
+	io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+	net::{TcpListener, TcpStream},
 	task::JoinHandle,
 };
 
 #[derive(Clone)]
 enum Reply {
 	Json(&'static str),
-	Status(u16),
+	Status(StatusCode),
 }
 
 struct MockServer {
@@ -34,7 +34,7 @@ impl MockServer {
 			.await
 			.expect("mock server should bind");
 		let addr = listener.local_addr().expect("mock server address");
-		let routes: HashMap<String, Reply> = routes
+		let routes: Vec<(String, Reply)> = routes
 			.into_iter()
 			.map(|(path, reply)| (path.to_string(), reply))
 			.collect();
@@ -50,24 +50,23 @@ impl MockServer {
 				let routes = Arc::clone(&routes);
 				let requests = Arc::clone(&requests_ref);
 				tokio::spawn(async move {
-					let Some(request) = read_request(&mut socket).await else {
+					let Some(path) = read_request_path(&mut socket).await else {
 						return;
 					};
-					let path =
-						request.split_whitespace().nth(1).unwrap_or("/").to_string();
 					requests.lock().expect("request lock").push(path.clone());
 
 					let reply = routes
 						.iter()
 						.find(|(route, _)| path.starts_with(route.as_str()))
 						.map(|(_, reply)| reply.clone());
-					let (status, reason, body) = match reply {
-						Some(Reply::Json(body)) => (200, "OK", body),
-						Some(Reply::Status(code)) => (code, reason_phrase(code), ""),
-						None => (404, "Not Found", ""),
+					let (status, body) = match reply {
+						Some(Reply::Json(body)) => (StatusCode::OK, body),
+						Some(Reply::Status(status)) => (status, ""),
+						None => (StatusCode::NOT_FOUND, ""),
 					};
 					let response = format!(
-						"HTTP/1.1 {status} {reason}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+						"HTTP/1.1 {status} {}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+						status.canonical_reason().unwrap_or("Unknown"),
 						body.len()
 					);
 					let _ = socket.write_all(response.as_bytes()).await;
@@ -98,34 +97,11 @@ impl Drop for MockServer {
 	}
 }
 
-async fn read_request(socket: &mut tokio::net::TcpStream) -> Option<String> {
-	let mut buf = vec![0u8; 16 * 1024];
-	let mut filled = 0;
-	loop {
-		let read = socket.read(&mut buf[filled..]).await.ok()?;
-		if read == 0 {
-			return None;
-		}
-		filled += read;
-		if buf[..filled].windows(4).any(|window| window == b"\r\n\r\n") {
-			break;
-		}
-		if filled == buf.len() {
-			return None;
-		}
-	}
-	Some(String::from_utf8_lossy(&buf[..filled]).to_string())
-}
-
-fn reason_phrase(status: u16) -> &'static str {
-	match status {
-		200 => "OK",
-		403 => "Forbidden",
-		404 => "Not Found",
-		429 => "Too Many Requests",
-		500 => "Internal Server Error",
-		_ => "Unknown",
-	}
+async fn read_request_path(socket: &mut TcpStream) -> Option<String> {
+	let mut reader = BufReader::new(&mut *socket);
+	let mut line = String::new();
+	reader.read_line(&mut line).await.ok()?;
+	line.split_whitespace().nth(1).map(str::to_string)
 }
 
 fn provider_for(server: &MockServer) -> OpenLibraryProvider {
@@ -459,7 +435,9 @@ async fn no_results_returns_empty_outcome() {
 
 #[tokio::test]
 async fn forbidden_maps_to_rate_limited() {
-	let server = MockServer::start(vec![("/search.json", Reply::Status(403))]).await;
+	let server =
+		MockServer::start(vec![("/search.json", Reply::Status(StatusCode::FORBIDDEN))])
+			.await;
 	let provider = provider_for(&server);
 
 	let query = SearchQuery {
@@ -479,7 +457,11 @@ async fn forbidden_maps_to_rate_limited() {
 // Retries sleep through the backoff, so this test is slow on purpose
 #[tokio::test]
 async fn too_many_requests_exhausts_retries() {
-	let server = MockServer::start(vec![("/search.json", Reply::Status(429))]).await;
+	let server = MockServer::start(vec![(
+		"/search.json",
+		Reply::Status(StatusCode::TOO_MANY_REQUESTS),
+	)])
+	.await;
 	let provider = provider_for(&server);
 
 	let query = SearchQuery {
@@ -527,7 +509,11 @@ async fn fetch_media_metadata_handles_work_ids() {
 
 #[tokio::test]
 async fn unexpected_search_status_propagates() {
-	let server = MockServer::start(vec![("/search.json", Reply::Status(500))]).await;
+	let server = MockServer::start(vec![(
+		"/search.json",
+		Reply::Status(StatusCode::INTERNAL_SERVER_ERROR),
+	)])
+	.await;
 	let provider = provider_for(&server);
 
 	let query = SearchQuery {

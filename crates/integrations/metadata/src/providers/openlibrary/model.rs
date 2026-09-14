@@ -14,11 +14,9 @@ pub struct SearchDoc {
 	pub title: String,
 	#[serde(default)]
 	pub author_name: Vec<String>,
-	#[serde(default)]
 	pub first_publish_year: Option<i32>,
 	#[serde(default)]
 	pub isbn: Vec<String>,
-	#[serde(default)]
 	pub cover_i: Option<i64>,
 }
 
@@ -62,15 +60,12 @@ pub struct Work {
 	pub key: String,
 	#[serde(default)]
 	pub title: String,
-	#[serde(default)]
 	pub subtitle: Option<String>,
-	#[serde(default)]
 	pub description: Option<RichText>,
 	#[serde(default)]
 	pub covers: Vec<i64>,
 	#[serde(default)]
 	pub authors: Vec<WorkAuthorRef>,
-	#[serde(default)]
 	pub first_publish_date: Option<String>,
 }
 
@@ -86,17 +81,13 @@ pub struct Edition {
 	pub key: String,
 	#[serde(default)]
 	pub title: String,
-	#[serde(default)]
 	pub subtitle: Option<String>,
-	#[serde(default)]
 	pub description: Option<RichText>,
 	#[serde(default)]
 	pub authors: Vec<AuthorRef>,
 	#[serde(default)]
 	pub works: Vec<WorkRef>,
-	#[serde(default)]
 	pub publish_date: Option<String>,
-	#[serde(default)]
 	pub number_of_pages: Option<i32>,
 	#[serde(default)]
 	pub covers: Vec<i64>,
@@ -118,9 +109,7 @@ impl Edition {
 pub struct Author {
 	#[serde(default)]
 	pub key: String,
-	#[serde(default)]
 	pub name: Option<String>,
-	#[serde(default)]
 	pub personal_name: Option<String>,
 }
 
@@ -150,17 +139,11 @@ pub fn strip_key(key: &str) -> String {
 }
 
 pub fn is_redirect_stub(value: &serde_json::Value) -> Option<String> {
-	value
-		.get("type")
-		.and_then(|t| t.get("key"))
-		.and_then(|k| k.as_str())
-		.filter(|k| *k == "/type/redirect")
-		.and_then(|_| {
-			value
-				.get("location")
-				.and_then(|l| l.as_str())
-				.map(|s| s.to_string())
-		})
+	let type_key = value.pointer("/type/key")?.as_str()?;
+	if type_key != "/type/redirect" {
+		return None;
+	}
+	value.get("location")?.as_str().map(str::to_string)
 }
 
 #[cfg(test)]
