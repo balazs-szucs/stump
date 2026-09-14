@@ -24,4 +24,4 @@ urlencoding = { workspace = true }
 
 [dev-dependencies]
 dotenvy = "0.15"
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["io-util", "net", "time"] }

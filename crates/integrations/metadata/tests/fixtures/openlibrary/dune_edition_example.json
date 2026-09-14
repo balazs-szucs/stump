@@ -1,0 +1,17 @@
+{
+	"authors": [{ "key": "/authors/OL79034A" }],
+	"covers": [8231856],
+	"description": "A deluxe reissue of the science fiction classic.",
+	"identifiers": { "goodreads": ["234225"], "librarything": ["3166"] },
+	"isbn_10": ["0441172717"],
+	"isbn_13": ["9780441172719"],
+	"key": "/books/OL2476485M",
+	"languages": [{ "key": "/languages/eng" }],
+	"number_of_pages": 535,
+	"publish_date": "1965",
+	"publishers": ["Ace Books"],
+	"series": ["Dune"],
+	"title": "Dune",
+	"type": { "key": "/type/edition" },
+	"works": [{ "key": "/works/OL893415W" }]
+}

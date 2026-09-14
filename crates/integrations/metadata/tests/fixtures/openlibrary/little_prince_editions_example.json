@@ -1,0 +1,19 @@
+{
+	"entries": [
+		{
+			"authors": [{ "key": "/authors/OL22242A" }],
+			"covers": [240727],
+			"isbn_10": ["0156012197"],
+			"isbn_13": ["9780156012195"],
+			"key": "/books/OL12345M",
+			"languages": [{ "key": "/languages/fre" }],
+			"number_of_pages": 96,
+			"publish_date": "2000",
+			"publishers": ["Harcourt"],
+			"title": "Le Petit Prince (French Edition)",
+			"type": { "key": "/type/edition" },
+			"works": [{ "key": "/works/OL47101W" }]
+		}
+	],
+	"size": 1
+}

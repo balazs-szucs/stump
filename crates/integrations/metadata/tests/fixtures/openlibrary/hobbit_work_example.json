@@ -1,0 +1,18 @@
+{
+	"authors": [
+		{
+			"author": { "key": "/authors/OL26320A" },
+			"type": { "key": "/type/author_role" }
+		}
+	],
+	"covers": [14626889],
+	"description": {
+		"type": "/type/text",
+		"value": "A hobbit journeys to reclaim treasure guarded by a dragon."
+	},
+	"first_publish_date": "1937",
+	"key": "/works/OL27482W",
+	"subtitle": "There and Back Again",
+	"title": "The Hobbit",
+	"type": { "key": "/type/work" }
+}
