@@ -175,7 +175,18 @@ impl OpenLibraryProvider {
 		doc: Option<&SearchDoc>,
 	) -> Result<ExternalMediaMetadata, MetadataProviderError> {
 		let work = match edition.works.first() {
-			Some(work_ref) => self.client.work(&work_ref.key).await.ok(),
+			Some(work_ref) => match self.client.work(&work_ref.key).await {
+				Ok(work) => Some(work),
+				Err(e) => {
+					// NOTE: the work only enriches the edition, so a failure is not fatal
+					tracing::debug!(
+						work_id = work_ref.key.as_str(),
+						error = ?e,
+						"Failed to fetch OpenLibrary work"
+					);
+					None
+				},
+			},
 			None => None,
 		};
 		let fallback_work = Work::default();
@@ -399,12 +410,18 @@ impl MetadataProvider for OpenLibraryProvider {
 			let Some(work_id) = work_external_id(doc) else {
 				continue;
 			};
-			let edition = self
-				.client
-				.work_editions(&work_id, 1)
-				.await
-				.ok()
-				.and_then(|entries| entries.into_iter().next());
+			let edition = match self.client.work_editions(&work_id, 1).await {
+				Ok(entries) => entries.into_iter().next(),
+				Err(e) => {
+					// NOTE: fall back to the work when editions cannot be fetched
+					tracing::debug!(
+						work_id,
+						error = ?e,
+						"Failed to fetch OpenLibrary editions"
+					);
+					None
+				},
+			};
 			let metadata = match edition {
 				Some(edition) => self.media_from_edition(edition, Some(doc)).await,
 				None => self.media_from_work(&work_id, Some(doc)).await,
