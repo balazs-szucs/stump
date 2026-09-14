@@ -351,8 +351,8 @@ async fn title_search_maps_candidates_without_author_requests() {
 	let requests = server.requests();
 	let search_request = requests.first().expect("a search should have been made");
 	assert!(search_request.contains("title=Dune"));
-	assert!(search_request.contains("author=Frank%20Herbert"));
-	assert!(search_request.contains("fields=key,title,author_name"));
+	assert!(search_request.contains("author=Frank+Herbert"));
+	assert!(search_request.contains("fields=key%2Ctitle%2Cauthor_name"));
 	assert!(
 		!requests.iter().any(|path| path.starts_with("/authors/")),
 		"search docs already carry author names, so no author requests are needed: {requests:?}"

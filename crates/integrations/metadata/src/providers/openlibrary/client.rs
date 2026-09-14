@@ -1,4 +1,5 @@
 use http_cache_reqwest::{Cache, CacheMode, HttpCache, HttpCacheOptions, MokaManager};
+use reqwest::Url;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::de::DeserializeOwned;
 use std::time::Duration;
@@ -78,32 +79,38 @@ impl OpenLibraryClient {
 		}
 	}
 
+	fn endpoint(&self, path: &str) -> Result<Url, MetadataProviderError> {
+		Url::parse(&format!("{}{}", self.base_url, path))
+			.map_err(|e| MetadataProviderError::Other(format!("Invalid URL: {e}")))
+	}
+
 	// Redirect stubs point at the surviving record when OpenLibrary merges or deletes an entry
-	async fn get_json<T>(&self, path_and_query: &str) -> Result<T, MetadataProviderError>
+	async fn get_json<T>(&self, mut url: Url) -> Result<T, MetadataProviderError>
 	where
 		T: DeserializeOwned,
 	{
-		let mut path = path_and_query.to_string();
+		let initial = url.clone();
 		for _ in 0..=MAX_REDIRECT_HOPS {
 			self.rate_limiter.until_ready().await;
-			let url = format!("{}{}", self.base_url, path);
 			let response = self
 				.inner
-				.get(&url)
+				.get(url.clone())
 				.send()
 				.await?
 				.error_for_status()
-				.map_err(|e| map_status_error(e, Some(&path)))?;
+				.map_err(|e| map_status_error(e, Some(url.as_str())))?;
 			let value: serde_json::Value =
 				response.json().await.map_err(MetadataProviderError::from)?;
 			if let Some(target) = is_redirect_stub(&value) {
-				path = redirect_path(&target);
+				url = url.join(&redirect_path(&target)).map_err(|e| {
+					MetadataProviderError::Other(format!("Invalid redirect: {e}"))
+				})?;
 				continue;
 			}
 			return serde_json::from_value(value).map_err(MetadataProviderError::from);
 		}
 		Err(MetadataProviderError::Other(format!(
-			"Too many redirects for {path_and_query}"
+			"Too many redirects for {initial}"
 		)))
 	}
 
@@ -113,14 +120,17 @@ impl OpenLibraryClient {
 		query: &SearchQuery,
 		limit: u32,
 	) -> Result<SearchResponse, MetadataProviderError> {
-		let mut url = format!("/search.json?limit={limit}&fields={SEARCH_FIELDS}");
+		let mut url = self.endpoint("/search.json")?;
+		url.query_pairs_mut()
+			.append_pair("limit", &limit.to_string())
+			.append_pair("fields", SEARCH_FIELDS);
 		if !query.title.trim().is_empty() {
-			url.push_str(&format!("&title={}", encode(&query.title)));
+			url.query_pairs_mut().append_pair("title", &query.title);
 		}
 		if let Some(author) = query.author.as_deref().filter(|a| !a.trim().is_empty()) {
-			url.push_str(&format!("&author={}", encode(author)));
+			url.query_pairs_mut().append_pair("author", author);
 		}
-		self.get_json(&url).await
+		self.get_json(url).await
 	}
 
 	pub async fn work(&self, id: &str) -> Result<Work, MetadataProviderError> {
@@ -147,7 +157,8 @@ impl OpenLibraryClient {
 		if key.is_empty() {
 			return Err(MetadataProviderError::NotFound(id.to_string()));
 		}
-		self.get_json(&format!("{prefix}/{key}.json")).await
+		let url = self.endpoint(&format!("{prefix}/{key}.json"))?;
+		self.get_json(url).await
 	}
 
 	pub async fn edition_by_isbn(
@@ -158,7 +169,8 @@ impl OpenLibraryClient {
 		if normalized.is_empty() {
 			return Err(MetadataProviderError::NotFound(isbn.to_string()));
 		}
-		self.get_json(&format!("/isbn/{normalized}.json")).await
+		let url = self.endpoint(&format!("/isbn/{normalized}.json"))?;
+		self.get_json(url).await
 	}
 
 	// Editions fill in the ISBNs, page counts, and dates a work lacks
@@ -171,8 +183,10 @@ impl OpenLibraryClient {
 		if key.is_empty() {
 			return Err(MetadataProviderError::NotFound(work_id.to_string()));
 		}
-		let path = format!("/works/{key}/editions.json?limit={limit}");
-		let response: WorkEditionsResponse = self.get_json(&path).await?;
+		let mut url = self.endpoint(&format!("/works/{key}/editions.json"))?;
+		url.query_pairs_mut()
+			.append_pair("limit", &limit.to_string());
+		let response: WorkEditionsResponse = self.get_json(url).await?;
 		Ok(response.entries)
 	}
 }
@@ -196,10 +210,6 @@ pub fn normalize_isbn(raw: &str) -> String {
 		.filter(|c| c.is_ascii_alphanumeric())
 		.collect::<String>()
 		.to_uppercase()
-}
-
-fn encode(value: &str) -> String {
-	urlencoding::encode(value).into_owned()
 }
 
 fn redirect_path(target: &str) -> String {
