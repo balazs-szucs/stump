@@ -45,7 +45,10 @@ impl OpenLibraryProvider {
 	}
 
 	fn limit(&self, query: &SearchQuery) -> u32 {
-		query.limit.unwrap_or(DEFAULT_MAX_RESULTS).min(DEFAULT_MAX_RESULTS)
+		query
+			.limit
+			.unwrap_or(DEFAULT_MAX_RESULTS)
+			.min(DEFAULT_MAX_RESULTS)
 	}
 }
 
@@ -504,5 +507,117 @@ impl MetadataProvider for OpenLibraryProvider {
 				error: Some(e.to_string()),
 			}),
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn empty_query_has_no_title_author_or_isbn() {
+		let query = SearchQuery::default();
+		assert!(is_empty_query(&query));
+	}
+
+	#[test]
+	fn whitespace_query_is_empty() {
+		let query = SearchQuery {
+			title: "   ".to_string(),
+			author: Some("  ".to_string()),
+			..Default::default()
+		};
+		assert!(is_empty_query(&query));
+	}
+
+	#[test]
+	fn title_query_is_not_empty() {
+		let query = SearchQuery {
+			title: "Dune".to_string(),
+			..Default::default()
+		};
+		assert!(!is_empty_query(&query));
+	}
+
+	#[test]
+	fn isbn_query_is_not_empty() {
+		let query = SearchQuery {
+			isbn: Some("9780140328721".to_string()),
+			..Default::default()
+		};
+		assert!(!is_empty_query(&query));
+	}
+
+	#[test]
+	fn blank_isbn_is_empty() {
+		let query = SearchQuery {
+			isbn: Some("---".to_string()),
+			..Default::default()
+		};
+		assert!(is_empty_query(&query));
+	}
+
+	#[test]
+	fn year_parses_from_long_date() {
+		assert_eq!(parse_year(Some("October 1, 1988")), Some(1988));
+	}
+
+	#[test]
+	fn year_falls_back_to_leading_digits() {
+		assert_eq!(parse_year(Some("1988.")), Some(1988));
+		assert_eq!(parse_year(Some("1988")), Some(1988));
+		assert_eq!(parse_year(Some("19")), None);
+	}
+
+	#[test]
+	fn year_handles_multibyte_text_without_panicking() {
+		assert_eq!(parse_year(Some("日本語")), None);
+		assert_eq!(parse_year(Some("©1988")), None);
+	}
+
+	#[test]
+	fn date_parts_fall_back_to_year() {
+		let (year, month, day) = parse_date_parts(Some("1988"));
+		assert_eq!(year, Some(1988));
+		assert_eq!(month, None);
+		assert_eq!(day, None);
+	}
+
+	#[test]
+	fn date_parts_parse_full_date() {
+		let (year, month, day) = parse_date_parts(Some("October 1, 1988"));
+		assert_eq!(year, Some(1988));
+		assert_eq!(month, Some(10));
+		assert_eq!(day, Some(1));
+	}
+
+	#[test]
+	fn subtitle_is_not_appended_twice() {
+		assert_eq!(
+			join_title_subtitle("Dune".to_string(), Some("Dune".to_string())),
+			"Dune"
+		);
+		assert_eq!(
+			join_title_subtitle("Dune".to_string(), Some("Deluxe".to_string())),
+			"Dune: Deluxe"
+		);
+		assert_eq!(join_title_subtitle("Dune".to_string(), None), "Dune");
+	}
+
+	#[test]
+	fn clean_author_names_trims_and_drops_blanks() {
+		let names =
+			clean_author_names(&["  Ursula K. Le Guin ".to_string(), "   ".to_string()]);
+		assert_eq!(names, Some(vec!["Ursula K. Le Guin".to_string()]));
+		assert_eq!(clean_author_names(&[]), None);
+	}
+
+	#[test]
+	fn isbn_param_ignores_blank_values() {
+		let query = SearchQuery {
+			isbn: Some(" - ".to_string()),
+			..Default::default()
+		};
+		assert_eq!(isbn_param(&query), None);
 	}
 }
