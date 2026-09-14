@@ -1,23 +1,26 @@
 {
 	"entries": [
 		{
-			"authors": [{ "key": "/authors/OL79034A" }],
-			"covers": [8231856],
-			"description": "A deluxe reissue of the science fiction classic.",
-			"identifiers": { "goodreads": ["234225"] },
-			"isbn_10": ["0441172717"],
-			"isbn_13": ["9780441172719"],
-			"key": "/books/OL2476485M",
-			"languages": [{ "key": "/languages/eng" }],
-			"number_of_pages": 535,
-			"publish_date": "1965",
-			"publishers": ["Ace Books"],
-			"series": ["Dune"],
+			"key": "/books/OL62445412M",
 			"title": "Dune",
-			"type": { "key": "/type/edition" },
-			"works": [{ "key": "/works/OL893415W" }]
+			"description": "\u00centr-un viitor \u00eendep\u0103rtat, \u00eentr-un imperiu interplanetar, condus dup\u0103 reguli feudale, casele nobiliare se lupt\u0103 pentru suprema\u021bie. Casa Atreides prime\u0219te controlul asupra planetei Arakis, singura surs\u0103 de mirodenie \u2013 cea mai valoroas\u0103 \u0219i important\u0103 substan\u021b\u0103 din univers. Asta ad\u00e2nce\u0219te vechea rivalitate dintre Casele Atreides \u0219i Harkonnen.\r\n\r\nLeto Atreides \u0219i familia lui se vor confrunta nu doar cu o planet\u0103 de\u0219ertic\u0103, neprietenoas\u0103 \u0219i necunoscut\u0103, ci \u0219i cu comploturi politice periculoase.\r\n\r\nO poveste clasic\u0103, bogat\u0103 \u00een sensuri religioase, economice, tehnologice \u0219i sociale, o complexitate care o pune definitiv pe lista c\u0103r\u021bilor de citit \u00eentr-o via\u021b\u0103.",
+			"works": [
+				{
+					"key": "/works/OL893414W"
+				}
+			],
+			"publish_date": "2021",
+			"number_of_pages": 734,
+			"covers": [15246488],
+			"isbn_13": ["9786064312617"],
+			"languages": [
+				{
+					"key": "/languages/rum"
+				}
+			],
+			"type": {
+				"key": "/type/edition"
+			}
 		}
-	],
-	"links": {},
-	"size": 1
+	]
 }

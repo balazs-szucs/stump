@@ -1,14 +1,25 @@
 {
-	"authors": [{ "author": { "key": "/authors/OL79034A" }, "type": { "key": "/type/author_role" } }],
-	"covers": [8231856],
-	"description": {
-		"type": "/type/text",
-		"value": "A science fiction novel set on the desert planet Arrakis."
-	},
-	"first_publish_date": "1965",
-	"key": "/works/OL893415W",
-	"subjects": ["Science Fiction", "Deserts"],
-	"subtitle": "Book One of the Dune Chronicles",
+	"key": "/works/OL893414W",
 	"title": "Dune",
-	"type": { "key": "/type/work" }
+	"description": "Set on the desert planet Arrakis, Dune is the story of the boy Paul Atreides, heir to a noble family tasked with ruling an inhospitable world where the only thing of value is the \"spice\" melange, a drug capable of extending life and enhancing consciousness. Coveted across the known universe, melange is a prize worth killing for...\r\n\r\nWhen House Atreides is betrayed, the destruction of Paul's family will set the boy on a journey toward a destiny greater than he could ever have imagined. And as he evolves into the mysterious man known as Muad'Dib, he will bring to fruition humankind's most ancient and unattainable dream.\r\n\r\nA stunning blend of adventure and mysticism, environmentalism and politics, Dune won the first Nebula Award, shared the Hugo Award, and formed the basis of what is undoubtedly the grandest epic in science fiction.",
+	"covers": [
+		11481354, 12375564, 11157826, 284314, 380097, 258358, 8015404, 1847148, 6978883, 7910196,
+		8440265, 8535871, 8570801, 8741978, 8792030, 1009420, 1009408, 974774, 1009426, 10358100,
+		4917636, 11290747, 7508914, 8740512, 8740672, 8742737, 8771989, 10431758, 10500426, 7103828,
+		10488703, 11481180, 8741528, 8763616, -1, 10368109, 10565022, 10777069, 12410029, 12575304,
+		13823878, 14488766, 13556124, 13816755, 13916320, 13934500, 14020316, 11944617
+	],
+	"authors": [
+		{
+			"author": {
+				"key": "/authors/OL79034A"
+			},
+			"type": {
+				"key": "/type/author_role"
+			}
+		}
+	],
+	"type": {
+		"key": "/type/work"
+	}
 }

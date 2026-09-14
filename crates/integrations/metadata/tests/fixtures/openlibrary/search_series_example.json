@@ -2,12 +2,11 @@
 	"docs": [
 		{
 			"author_name": ["Frank Herbert"],
-			"cover_i": 8231856,
+			"cover_i": 11481354,
 			"first_publish_year": 1965,
-			"key": "/works/OL893415W",
+			"isbn": ["9788373017238", "9780425064344", "9780425080023", "0450042308"],
+			"key": "/works/OL893414W",
 			"title": "Dune"
 		}
-	],
-	"num_found": 1,
-	"start": 0
+	]
 }

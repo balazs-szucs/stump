@@ -140,7 +140,7 @@ async fn isbn_lookup_maps_edition_metadata() {
 			)),
 		),
 		(
-			"/works/OL893415W.json",
+			"/works/OL893414W.json",
 			Reply::Json(include_str!("fixtures/openlibrary/dune_work_example.json")),
 		),
 		(
@@ -165,7 +165,7 @@ async fn isbn_lookup_maps_edition_metadata() {
 
 	let candidate = &outcome.candidates[0];
 	assert_eq!(candidate.provider, "openlibrary");
-	assert_eq!(candidate.external_id, "OL2476485M");
+	assert_eq!(candidate.external_id, "OL22597282M");
 	assert!(
 		candidate.confidence >= 0.98,
 		"an ISBN match should be definitive, got {}",
@@ -176,35 +176,39 @@ async fn isbn_lookup_maps_edition_metadata() {
 		.metadata
 		.as_media()
 		.expect("candidate should be media");
-	assert_eq!(
-		media.title.as_deref(),
-		Some("Dune: Book One of the Dune Chronicles")
-	);
-	assert_eq!(
-		media.summary.as_deref(),
-		Some("A science fiction novel set on the desert planet Arrakis.")
+	assert_eq!(media.title.as_deref(), Some("Dune"));
+	assert!(
+		media
+			.summary
+			.as_deref()
+			.is_some_and(|s| s.starts_with("Set on the desert planet Arrakis")),
+		"expected the work description, got {:?}",
+		media.summary
 	);
 	assert_eq!(media.writers, Some(vec!["Frank Herbert".to_string()]));
-	assert_eq!(media.isbn.as_deref(), Some("0441172717"));
+	assert_eq!(media.isbn.as_deref(), Some("0441172660"));
 	assert_eq!(media.isbn_13.as_deref(), Some("9780441172719"));
 	assert_eq!(media.page_count, Some(535));
-	assert_eq!(media.series_name.as_deref(), Some("Dune"));
-	assert_eq!(media.year, Some(1965));
+	assert_eq!(
+		media.series_name.as_deref(),
+		Some("Dune chronicles -- bk. 1")
+	);
+	assert_eq!(media.year, Some(1987));
 	assert_eq!(media.month, None);
 	assert_eq!(media.day, None);
 	assert_eq!(
 		media.cover_url.as_deref(),
-		Some("https://covers.openlibrary.org/b/id/8231856-L.jpg")
+		Some("https://covers.openlibrary.org/b/id/15166231-L.jpg")
 	);
 	assert_eq!(
 		media.provider_url.as_deref(),
-		Some("https://openlibrary.org/books/OL2476485M")
+		Some("https://openlibrary.org/books/OL22597282M")
 	);
 	assert_eq!(
 		server.requests(),
 		vec![
 			"/isbn/9780441172719.json".to_string(),
-			"/works/OL893415W.json".to_string(),
+			"/works/OL893414W.json".to_string(),
 			"/authors/OL79034A.json".to_string(),
 		]
 	);
@@ -220,13 +224,13 @@ async fn unknown_isbn_falls_back_to_title_search() {
 			)),
 		),
 		(
-			"/works/OL893415W/editions.json",
+			"/works/OL893414W/editions.json",
 			Reply::Json(include_str!(
 				"fixtures/openlibrary/dune_editions_example.json"
 			)),
 		),
 		(
-			"/works/OL893415W.json",
+			"/works/OL893414W.json",
 			Reply::Json(include_str!("fixtures/openlibrary/dune_work_example.json")),
 		),
 		(
@@ -249,7 +253,7 @@ async fn unknown_isbn_falls_back_to_title_search() {
 		.await
 		.expect("fallback search");
 
-	assert_eq!(outcome.requested, 3);
+	assert_eq!(outcome.requested, 2);
 	assert_eq!(outcome.candidates.len(), 2);
 	assert!(server
 		.requests()
@@ -267,25 +271,19 @@ async fn title_search_maps_candidates_without_author_requests() {
 			)),
 		),
 		(
-			"/works/OL893415W/editions.json",
+			"/works/OL893414W/editions.json",
 			Reply::Json(include_str!(
 				"fixtures/openlibrary/dune_editions_example.json"
 			)),
 		),
 		(
-			"/works/OL893415W.json",
+			"/works/OL893414W.json",
 			Reply::Json(include_str!("fixtures/openlibrary/dune_work_example.json")),
 		),
 		(
 			"/works/OL27482W.json",
 			Reply::Json(include_str!(
 				"fixtures/openlibrary/hobbit_work_example.json"
-			)),
-		),
-		(
-			"/authors/OL79034A.json",
-			Reply::Json(include_str!(
-				"fixtures/openlibrary/dune_author_example.json"
 			)),
 		),
 	])
@@ -299,30 +297,24 @@ async fn title_search_maps_candidates_without_author_requests() {
 	};
 	let outcome = provider.search_media(&query).await.expect("title search");
 
-	assert_eq!(outcome.requested, 3);
+	assert_eq!(outcome.requested, 2);
 	assert_eq!(outcome.candidates.len(), 2);
 
 	let first = outcome.candidates[0]
 		.metadata
 		.as_media()
 		.expect("first candidate is media");
-	assert_eq!(
-		first.title.as_deref(),
-		Some("Dune: Book One of the Dune Chronicles")
-	);
+	assert_eq!(first.title.as_deref(), Some("Dune"));
 	assert_eq!(first.writers, Some(vec!["Frank Herbert".to_string()]));
-	assert_eq!(first.page_count, Some(535));
+	assert_eq!(first.page_count, Some(734));
 
 	let second = outcome.candidates[1]
 		.metadata
 		.as_media()
 		.expect("second candidate is media");
-	assert_eq!(
-		second.title.as_deref(),
-		Some("The Hobbit: There and Back Again")
-	);
-	assert_eq!(second.year, Some(1937));
-	assert_eq!(second.writers, Some(vec!["J. R. R. Tolkien".to_string()]));
+	assert_eq!(second.title.as_deref(), Some("The Hobbit"));
+	assert_eq!(second.year, Some(1938));
+	assert_eq!(second.writers, Some(vec!["J.R.R. Tolkien".to_string()]));
 
 	let requests = server.requests();
 	let search_request = requests.first().expect("a search should have been made");
@@ -345,7 +337,7 @@ async fn series_search_maps_work_metadata() {
 			)),
 		),
 		(
-			"/works/OL893415W.json",
+			"/works/OL893414W.json",
 			Reply::Json(include_str!("fixtures/openlibrary/dune_work_example.json")),
 		),
 	])
@@ -362,15 +354,19 @@ async fn series_search_maps_work_metadata() {
 	assert_eq!(outcome.candidates.len(), 1);
 
 	let candidate = &outcome.candidates[0];
-	assert_eq!(candidate.external_id, "OL893415W");
+	assert_eq!(candidate.external_id, "OL893414W");
 	let series = candidate
 		.metadata
 		.as_series()
 		.expect("candidate should be series");
 	assert_eq!(series.title, "Dune");
-	assert_eq!(
-		series.summary.as_deref(),
-		Some("A science fiction novel set on the desert planet Arrakis.")
+	assert!(
+		series
+			.summary
+			.as_deref()
+			.is_some_and(|s| s.starts_with("Set on the desert planet Arrakis")),
+		"expected the work description, got {:?}",
+		series.summary
 	);
 	assert_eq!(series.authors, Some(vec!["Frank Herbert".to_string()]));
 	assert_eq!(series.year, Some(1965));
@@ -390,7 +386,7 @@ async fn redirect_stub_is_followed() {
 			)),
 		),
 		(
-			"/works/OL893415W.json",
+			"/works/OL893414W.json",
 			Reply::Json(include_str!("fixtures/openlibrary/dune_work_example.json")),
 		),
 		(
@@ -407,7 +403,7 @@ async fn redirect_stub_is_followed() {
 		.fetch_series_metadata("OL99999W")
 		.await
 		.expect("redirected work fetch");
-	assert_eq!(series.external_id, "OL893415W");
+	assert_eq!(series.external_id, "OL893414W");
 	assert_eq!(series.title, "Dune");
 	assert_eq!(server.requests().len(), 3);
 }
@@ -501,24 +497,21 @@ async fn too_many_requests_exhausts_retries() {
 #[tokio::test]
 async fn fetch_media_metadata_handles_work_ids() {
 	let server = MockServer::start(vec![(
-		"/works/OL893415W.json",
+		"/works/OL893414W.json",
 		Reply::Json(include_str!("fixtures/openlibrary/dune_work_example.json")),
 	)])
 	.await;
 	let provider = provider_for(&server);
 
 	let media = provider
-		.fetch_media_metadata("OL893415W")
+		.fetch_media_metadata("OL893414W")
 		.await
 		.expect("work fallback");
-	assert_eq!(media.external_id, "OL893415W");
-	assert_eq!(
-		media.title.as_deref(),
-		Some("Dune: Book One of the Dune Chronicles")
-	);
+	assert_eq!(media.external_id, "OL893414W");
+	assert_eq!(media.title.as_deref(), Some("Dune"));
 	assert_eq!(
 		media.provider_url.as_deref(),
-		Some("https://openlibrary.org/works/OL893415W")
+		Some("https://openlibrary.org/works/OL893414W")
 	);
 }
 
@@ -545,19 +538,19 @@ async fn search_result_prefers_doc_title_over_first_edition() {
 		(
 			"/search.json",
 			Reply::Json(include_str!(
-				"fixtures/openlibrary/search_translated_example.json"
+				"fixtures/openlibrary/search_hobbit_example.json"
 			)),
 		),
 		(
-			"/works/OL47101W/editions.json",
+			"/works/OL27482W/editions.json",
 			Reply::Json(include_str!(
-				"fixtures/openlibrary/little_prince_editions_example.json"
+				"fixtures/openlibrary/hobbit_editions_example.json"
 			)),
 		),
 		(
-			"/works/OL47101W.json",
+			"/works/OL27482W.json",
 			Reply::Json(include_str!(
-				"fixtures/openlibrary/little_prince_work_example.json"
+				"fixtures/openlibrary/hobbit_work_example.json"
 			)),
 		),
 	])
@@ -565,7 +558,7 @@ async fn search_result_prefers_doc_title_over_first_edition() {
 	let provider = provider_for(&server);
 
 	let query = SearchQuery {
-		title: "The Little Prince".to_string(),
+		title: "The Hobbit".to_string(),
 		..Default::default()
 	};
 	let outcome = provider.search_media(&query).await.expect("title search");
@@ -575,10 +568,8 @@ async fn search_result_prefers_doc_title_over_first_edition() {
 		.metadata
 		.as_media()
 		.expect("candidate should be media");
-	assert_eq!(media.title.as_deref(), Some("The Little Prince"));
-	assert_eq!(
-		media.writers,
-		Some(vec!["Antoine de Saint-Exupéry".to_string()])
-	);
-	assert_eq!(media.external_id, "OL12345M");
+	// The first edition is Ukrainian, so the queried title must win
+	assert_eq!(media.title.as_deref(), Some("The Hobbit"));
+	assert_eq!(media.writers, Some(vec!["J.R.R. Tolkien".to_string()]));
+	assert_eq!(media.external_id, "OL62190138M");
 }

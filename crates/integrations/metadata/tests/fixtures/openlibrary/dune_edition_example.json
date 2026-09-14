@@ -1,17 +1,27 @@
 {
-	"authors": [{ "key": "/authors/OL79034A" }],
-	"covers": [8231856],
-	"description": "A deluxe reissue of the science fiction classic.",
-	"identifiers": { "goodreads": ["234225"], "librarything": ["3166"] },
-	"isbn_10": ["0441172717"],
-	"isbn_13": ["9780441172719"],
-	"key": "/books/OL2476485M",
-	"languages": [{ "key": "/languages/eng" }],
-	"number_of_pages": 535,
-	"publish_date": "1965",
-	"publishers": ["Ace Books"],
-	"series": ["Dune"],
+	"key": "/books/OL22597282M",
 	"title": "Dune",
-	"type": { "key": "/type/edition" },
-	"works": [{ "key": "/works/OL893415W" }]
+	"authors": [
+		{
+			"key": "/authors/OL79034A"
+		}
+	],
+	"works": [
+		{
+			"key": "/works/OL893414W"
+		}
+	],
+	"publish_date": "1987",
+	"number_of_pages": 535,
+	"covers": [15166231],
+	"isbn_10": ["0441172660", "0441172717"],
+	"languages": [
+		{
+			"key": "/languages/eng"
+		}
+	],
+	"series": ["Dune chronicles -- bk. 1"],
+	"type": {
+		"key": "/type/edition"
+	}
 }

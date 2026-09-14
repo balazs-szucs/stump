@@ -45,7 +45,7 @@ fn basic_book_metadata_is_mapped() {
 			.expect("search fixture parses");
 	let doc = &response.docs[0];
 	assert_eq!(doc.title, "Fantastic Mr Fox");
-	assert_eq!(doc.author_name, vec!["Roald Dahl".to_string()]);
+	assert_eq!(doc.author_name, vec!["Roald Dahl", "Roal'd Dal'"]);
 
 	let work = work_fixture();
 	let edition = edition_fixture();
@@ -70,22 +70,18 @@ fn basic_book_metadata_is_mapped() {
 }
 
 #[test]
-fn complex_description_and_series_are_parsed() {
+fn description_uses_work_when_edition_has_none() {
 	let work = work_fixture();
 	let edition = edition_fixture();
 
-	assert_eq!(
-		mapper::extract_description(&work, Some(&edition)).as_deref(),
-		Some("Clever fox steals food from farmers.")
+	assert!(
+		mapper::extract_description(&work, Some(&edition))
+			.as_deref()
+			.is_some_and(|d| d.starts_with("The main character of Fantastic Mr. Fox")),
+		"expected the work description"
 	);
-	assert_eq!(
-		mapper::extract_subtitle(&work, Some(&edition)).as_deref(),
-		Some("A Classic Tale")
-	);
-	assert_eq!(
-		mapper::extract_series_info(&edition).as_deref(),
-		Some("Marganit")
-	);
+	assert_eq!(mapper::extract_subtitle(&work, Some(&edition)), None);
+	assert_eq!(mapper::extract_series_info(&edition), None);
 	assert_eq!(mapper::extract_series_info(&Edition::default()), None);
 }
 
@@ -94,9 +90,9 @@ fn redirect_and_stub_handling_is_correct() {
 	let stub = serde_json::json!({
 		"key": "/works/OL99999W",
 		"type": {"key": "/type/redirect"},
-		"location": "/works/OL45804W"
+		"location": "/works/OL893414W"
 	});
-	assert_eq!(is_redirect_stub(&stub).as_deref(), Some("/works/OL45804W"));
+	assert_eq!(is_redirect_stub(&stub).as_deref(), Some("/works/OL893414W"));
 
 	let plain = serde_json::json!({
 		"key": "/works/OL45804W",

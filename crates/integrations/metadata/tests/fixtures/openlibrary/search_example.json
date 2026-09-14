@@ -1,12 +1,11 @@
 {
 	"docs": [
 		{
-			"author_name": ["Roald Dahl"],
-			"cover_i": 15152634,
-			"first_publish_year": 1970,
-			"isbn": ["0140328726", "9780140328721"],
+			"author_name": ["Roald Dahl", "Roal'd Dal'"],
+			"cover_i": 6498519,
+			"first_publish_year": 1917,
+			"isbn": ["9782070521180", "0141371382", "0613820835", "0812422279"],
 			"key": "/works/OL45804W",
-			"language": ["eng"],
 			"title": "Fantastic Mr Fox"
 		}
 	]

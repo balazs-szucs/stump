@@ -1,18 +1,27 @@
 {
-	"authors": [{ "key": "/authors/OL34184A" }],
-	"covers": [15152634],
-	"description": "Clever fox steals food from farmers.",
-	"identifiers": { "goodreads": ["1507552"], "librarything": ["6446"] },
+	"key": "/books/OL7353617M",
+	"title": "Fantastic Mr. Fox",
+	"authors": [
+		{
+			"key": "/authors/OL34184A"
+		}
+	],
+	"works": [
+		{
+			"key": "/works/OL45804W"
+		}
+	],
+	"publish_date": "October 1, 1988",
+	"number_of_pages": 96,
+	"covers": [15152634, 8739161, -1],
 	"isbn_10": ["0140328726"],
 	"isbn_13": ["9780140328721"],
-	"key": "/books/OL7353617M",
-	"languages": [{ "key": "/languages/eng" }],
-	"number_of_pages": 96,
-	"publish_date": "October 1, 1988",
-	"publishers": ["Puffin"],
-	"series": ["Marganit"],
-	"subtitle": "A Classic Tale",
-	"title": "Fantastic Mr. Fox",
-	"type": { "key": "/type/edition" },
-	"works": [{ "key": "/works/OL45804W" }]
+	"languages": [
+		{
+			"key": "/languages/eng"
+		}
+	],
+	"type": {
+		"key": "/type/edition"
+	}
 }

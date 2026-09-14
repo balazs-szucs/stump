@@ -1,5 +1,7 @@
 {
-	"key": "/works/OL99999W",
-	"location": "/works/OL893415W",
-	"type": { "key": "/type/redirect" }
+	"key": "/works/OL893415W",
+	"location": "/works/OL893414W",
+	"type": {
+		"key": "/type/redirect"
+	}
 }
