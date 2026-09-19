@@ -907,6 +907,7 @@
 			"identifierMobiAsin": "Mobi ASIN",
 			"identifierUuid": "Book UUID",
 			"genres": "Genres",
+			"tags": "Tags",
 			"inkers": "Inkers",
 			"language": "Language",
 			"letterers": "Letterers",

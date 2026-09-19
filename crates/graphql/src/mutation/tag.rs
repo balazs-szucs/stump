@@ -61,52 +61,7 @@ impl TagMutation {
 			.await?
 			.ok_or("Media not found")?;
 
-		let existing_tags = tag::Entity::find()
-			.filter(
-				tag::Column::Id.in_subquery(
-					Query::select()
-						.column(media_tag::Column::TagId)
-						.from(media_tag::Entity)
-						.and_where(media_tag::Column::MediaId.eq(model.media.id.clone()))
-						.to_owned(),
-				),
-			)
-			.all(conn)
-			.await?;
-
-		let txn = conn.begin().await?;
-
-		let (to_connect, to_disconnect) = sync_tags(&txn, &tags, &existing_tags).await?;
-
-		if !to_disconnect.is_empty() {
-			media_tag::Entity::delete_many()
-				.filter(
-					media_tag::Column::TagId
-						.is_in(to_disconnect)
-						.and(media_tag::Column::MediaId.eq(model.media.id.clone())),
-				)
-				.exec(&txn)
-				.await?;
-		}
-
-		if !to_connect.is_empty() {
-			let media_id = model.media.id.clone();
-			media_tag::Entity::insert_many(
-				to_connect
-					.into_iter()
-					.map(|tag_id| media_tag::ActiveModel {
-						media_id: Set(media_id.clone()),
-						tag_id: Set(tag_id),
-						..Default::default()
-					})
-					.collect::<Vec<_>>(),
-			)
-			.on_conflict_do_nothing()
-			.exec(&txn)
-			.await?;
-		}
-
-		txn.commit().await?;
+		replace_media_tags(conn, &model.media.id, tags).await?;
 
 		Ok(model.into())
 	}
@@ -204,6 +159,64 @@ impl TagMutation {
 
 		Ok(deleted_tags.into_iter().map(Tag::from).collect())
 	}
+}
+
+/// Set the tags for a media item, creating any tags that do not exist yet, linking new
+/// ones, and unlinking removed ones.
+pub(crate) async fn replace_media_tags(
+	conn: &DatabaseConnection,
+	media_id: &str,
+	tags: Vec<String>,
+) -> Result<()> {
+	let media_id = media_id.to_string();
+
+	let existing_tags = tag::Entity::find()
+		.filter(
+			tag::Column::Id.in_subquery(
+				Query::select()
+					.column(media_tag::Column::TagId)
+					.from(media_tag::Entity)
+					.and_where(media_tag::Column::MediaId.eq(media_id.clone()))
+					.to_owned(),
+			),
+		)
+		.all(conn)
+		.await?;
+
+	let txn = conn.begin().await?;
+
+	let (to_connect, to_disconnect) = sync_tags(&txn, &tags, &existing_tags).await?;
+
+	if !to_disconnect.is_empty() {
+		media_tag::Entity::delete_many()
+			.filter(
+				media_tag::Column::TagId
+					.is_in(to_disconnect)
+					.and(media_tag::Column::MediaId.eq(media_id.clone())),
+			)
+			.exec(&txn)
+			.await?;
+	}
+
+	if !to_connect.is_empty() {
+		media_tag::Entity::insert_many(
+			to_connect
+				.into_iter()
+				.map(|tag_id| media_tag::ActiveModel {
+					media_id: Set(media_id.clone()),
+					tag_id: Set(tag_id),
+					..Default::default()
+				})
+				.collect::<Vec<_>>(),
+		)
+		.on_conflict_do_nothing()
+		.exec(&txn)
+		.await?;
+	}
+
+	txn.commit().await?;
+
+	Ok(())
 }
 
 async fn get_unique_tags(

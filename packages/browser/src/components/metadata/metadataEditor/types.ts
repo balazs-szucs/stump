@@ -52,6 +52,7 @@ export const MediaMetadataKeys: MediaMetadataField[] = [
 	'letterers',
 	'characters',
 	'genres',
+	'tags',
 	'language',
 	'links',
 	'notes',

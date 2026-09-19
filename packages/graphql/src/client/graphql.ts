@@ -1570,6 +1570,7 @@ export type MediaMetadata = {
   storyArc?: Maybe<Scalars['String']['output']>;
   storyArcNumber?: Maybe<Scalars['Decimal']['output']>;
   summary?: Maybe<Scalars['String']['output']>;
+  tags: Array<Scalars['String']['output']>;
   teams: Array<Scalars['String']['output']>;
   title?: Maybe<Scalars['String']['output']>;
   titleSort?: Maybe<Scalars['String']['output']>;
@@ -1633,6 +1634,7 @@ export type MediaMetadataInput = {
   storyArc?: InputMaybe<Scalars['String']['input']>;
   storyArcNumber?: InputMaybe<Scalars['Decimal']['input']>;
   summary?: InputMaybe<Scalars['String']['input']>;
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
   teams?: InputMaybe<Array<Scalars['String']['input']>>;
   title?: InputMaybe<Scalars['String']['input']>;
   titleSort?: InputMaybe<Scalars['String']['input']>;
@@ -5706,7 +5708,7 @@ export type BookSearchOverlayQuery = { __typename?: 'Query', media: { __typename
 
 export type SimpleBookCardFragment = { __typename?: 'Media', id: string, resolvedName: string, createdAt: any, thumbnail: { __typename?: 'ImageRef', url: string, metadata?: { __typename?: 'ImageMetadata', averageColor?: string | null, thumbhash?: string | null, colors: Array<{ __typename?: 'ImageColor', color: string, percentage: any }> } | null } } & { ' $fragmentName'?: 'SimpleBookCardFragment' };
 
-export type MediaMetadataEditorFragment = { __typename?: 'MediaMetadata', ageRating?: number | null, characters: Array<string>, colorists: Array<string>, coverArtists: Array<string>, day?: number | null, editors: Array<string>, format?: string | null, identifierAmazon?: string | null, identifierCalibre?: string | null, identifierGoogle?: string | null, identifierIsbn?: string | null, identifierMobiAsin?: string | null, identifierUuid?: string | null, genres: Array<string>, inkers: Array<string>, language?: string | null, letterers: Array<string>, links: Array<string>, month?: number | null, notes?: string | null, number?: any | null, pageCount?: number | null, pencillers: Array<string>, publisher?: string | null, series?: string | null, seriesGroup?: string | null, storyArc?: string | null, storyArcNumber?: any | null, summary?: string | null, teams: Array<string>, title?: string | null, titleSort?: string | null, volume?: number | null, writers: Array<string>, year?: number | null, lockedFields: Array<MetadataField> } & { ' $fragmentName'?: 'MediaMetadataEditorFragment' };
+export type MediaMetadataEditorFragment = { __typename?: 'MediaMetadata', ageRating?: number | null, characters: Array<string>, colorists: Array<string>, coverArtists: Array<string>, day?: number | null, editors: Array<string>, format?: string | null, identifierAmazon?: string | null, identifierCalibre?: string | null, identifierGoogle?: string | null, identifierIsbn?: string | null, identifierMobiAsin?: string | null, identifierUuid?: string | null, genres: Array<string>, inkers: Array<string>, language?: string | null, letterers: Array<string>, links: Array<string>, month?: number | null, notes?: string | null, number?: any | null, pageCount?: number | null, pencillers: Array<string>, publisher?: string | null, series?: string | null, seriesGroup?: string | null, storyArc?: string | null, storyArcNumber?: any | null, summary?: string | null, tags: Array<string>, teams: Array<string>, title?: string | null, titleSort?: string | null, volume?: number | null, writers: Array<string>, year?: number | null, lockedFields: Array<MetadataField> } & { ' $fragmentName'?: 'MediaMetadataEditorFragment' };
 
 export type UpdateMediaMetadataMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -7767,6 +7769,7 @@ export const MediaMetadataEditorFragmentDoc = new TypedDocumentString(`
   storyArc
   storyArcNumber
   summary
+  tags
   teams
   title
   titleSort
@@ -10419,6 +10422,7 @@ export const UpdateMediaMetadataDocument = new TypedDocumentString(`
   storyArc
   storyArcNumber
   summary
+  tags
   teams
   title
   titleSort
@@ -10532,6 +10536,7 @@ fragment MediaMetadataEditor on MediaMetadata {
   storyArc
   storyArcNumber
   summary
+  tags
   teams
   title
   titleSort

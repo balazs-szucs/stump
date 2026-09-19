@@ -2,6 +2,7 @@ use crate::{
 	data::{AuthContext, CoreContext},
 	guard::PermissionGuard,
 	input::media::{MediaMetadataInput, MediaMetadataSearchInput},
+	mutation::tag::replace_media_tags,
 	object::{media::Media, metadata_fetch_record::MetadataFetchRecord},
 };
 use async_graphql::{Context, Object, Result, ID};
@@ -26,7 +27,7 @@ impl MediaMetadataMutation {
 		&self,
 		ctx: &Context<'_>,
 		id: ID,
-		input: MediaMetadataInput,
+		mut input: MediaMetadataInput,
 	) -> Result<Media> {
 		let AuthContext { user, .. } = ctx.data::<AuthContext>()?;
 		let conn = ctx.data::<CoreContext>()?.conn.as_ref();
@@ -38,6 +39,8 @@ impl MediaMetadataMutation {
 			.await?
 			.ok_or("Media not found")?;
 
+		let tags = input.tags.take();
+
 		let updated_metadata = if let Some(existing) = model.metadata {
 			let mut active_model = input.into_active_model();
 			active_model.id = Set(existing.id);
@@ -48,6 +51,10 @@ impl MediaMetadataMutation {
 			active_model.media_id = Set(Some(model.media.id.clone()));
 			active_model.insert(conn).await?
 		};
+
+		if let Some(tags) = tags {
+			replace_media_tags(conn, &model.media.id, tags).await?;
+		}
 
 		let model = media::ModelWithMetadata {
 			media: model.media,

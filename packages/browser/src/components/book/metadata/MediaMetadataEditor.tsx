@@ -61,6 +61,7 @@ const fragment = graphql(`
 		storyArc
 		storyArcNumber
 		summary
+		tags
 		teams
 		title
 		titleSort
@@ -180,6 +181,17 @@ export default function MediaMetadataEditor({ mediaId, data }: Props) {
 								)
 							},
 						)
+						.with('tags', () => (
+							<BadgeListCell
+								binding="tags"
+								values={metadata?.tags ?? []}
+								itemUrl={(index) => {
+									const tag = metadata?.tags?.[index]
+									if (!tag) return undefined
+									return paths.bookSearchWithFilter({ tags: { anyOf: [tag] } })
+								}}
+							/>
+						))
 						.with('links', () => {
 							const safeUrls = (getProperty(metadata, 'links') ?? []).map((url) => {
 								try {

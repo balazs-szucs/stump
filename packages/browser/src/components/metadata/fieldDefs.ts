@@ -29,6 +29,7 @@ export const MEDIA_FIELD_DEFS: MetadataFieldDef[] = [
 		candidateKey: 'genres',
 		editorType: 'badgeList',
 	},
+	{ field: MetadataField.Tags, binding: 'tags' },
 	{
 		field: MetadataField.Writers,
 		binding: 'writers',

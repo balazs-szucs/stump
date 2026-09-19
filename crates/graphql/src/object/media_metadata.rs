@@ -1,7 +1,9 @@
-use async_graphql::{ComplexObject, SimpleObject};
+use async_graphql::{ComplexObject, Context, Result, SimpleObject};
 use metadata_integrations::MetadataField;
-use models::entity::media_metadata;
+use models::entity::{media_metadata, tag};
 use stump_core::utils::serde::comma_separated_list_to_vec;
+
+use crate::data::CoreContext;
 
 #[derive(Debug, Clone, SimpleObject)]
 #[graphql(complex)]
@@ -112,5 +114,15 @@ impl MediaMetadata {
 			.as_ref()
 			.and_then(|v| serde_json::from_value(v.clone()).ok())
 			.unwrap_or_default()
+	}
+
+	async fn tags(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
+		let conn = ctx.data::<CoreContext>()?.conn.as_ref();
+		let model = tag::Entity::find_for_media_id(
+			&self.model.media_id.clone().unwrap_or_default(),
+		)
+		.all(conn)
+		.await?;
+		Ok(model.into_iter().map(|t| t.name).collect())
 	}
 }
