@@ -50,8 +50,10 @@ export default function BookOverviewSceneHeader({ media, book, completedAt }: Pr
 
 			{hasStats && (
 				<div className="gap-3 sm:grid-cols-3 md:flex md:flex-wrap md:gap-6 grid grid-cols-2">
+					{/* TODO(metadata): table shows metadata.pageCount, which is often null, so this value is missing there */}
 					{pages > 0 && <Statistic.Item label="Pages" value={pages} />}
 					{size > 0 && <Statistic.Item label="Size" value={formatBytes(size) ?? '—'} />}
+					{/* TODO(metadata): table shows metadata.format, which is often null, so this value is missing there */}
 					{media.extension && (
 						<Statistic.Item label="Format" value={media.extension.toUpperCase()} />
 					)}

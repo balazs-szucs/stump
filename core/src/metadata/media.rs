@@ -15,6 +15,21 @@ use crate::metadata::utils::parse_pdf_date;
 // NOTE: alias is used primarily to support ComicInfo.xml files, as that metadata
 // is formatted in PascalCase
 
+// TODO(metadata): the table shows every MediaMetadata field for every format. Only
+// format-relevant fields should be shown (e.g. ComicInfo fields for comics, EPUB
+// fields for EPUBs).
+//
+// Unsupported by format, each would need a media_metadata column, GraphQL
+// field/input, and an editor row before it can be shown:
+// ComicInfo (https://anansi-project.github.io/docs/comicinfo/schemas/v2.0):
+//   Count, AlternateSeries, AlternateNumber, AlternateCount, Imprint, LanguageISO,
+//   BlackAndWhite, Manga, Locations, ScanInformation, Pages, CommunityRating,
+//   MainCharacterOrTeam, Review
+// EPUB 2/3 (https://www.w3.org/TR/epub-33/#sec-pkg-metadata):
+//   dc:contributor, dc:rights, dc:type, dc:source, dc:relation, dc:coverage,
+//   dc:format, dc:identifier without a scheme, calibre:author_sort, calibre:rating,
+//   calibre:comments, collection-type
+
 /// Struct representing the metadata for a processed file.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Default, Merge)]

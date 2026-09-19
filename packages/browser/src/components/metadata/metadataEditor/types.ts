@@ -27,6 +27,8 @@ export type MediaMetadataArrayField = Extract<
 
 export type MediaMetadataEditorRow = MetadataEditorRow<MediaMetadataField>
 
+// TODO(metadata): only show fields relevant to the file's format (e.g. ComicInfo
+// fields for comics, EPUB fields for EPUBs), not every possible metadata field
 export const MediaMetadataKeys: MediaMetadataField[] = [
 	'format',
 	'title',
